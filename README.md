@@ -87,6 +87,9 @@ docker run -p 8000:8000 -e FASTF1_CACHE_DIR=/app/.fastf1-cache fastf1-lapdiff
 - Minimum, entry, and exit speed differences
 - Throttle start, full-throttle, hesitation, coasting, early lift, and overlap detections
 - Gear, shift, RPM, DRS, top-speed, acceleration, and racing-line deviation comparisons
+- Engineering section metrics for straights, braking zones, corner categories, DRS distance, brake distance, speed gain, gear mode, RPM, and exit speed
+- Performance fingerprint summary that separates straight, braking, low-speed, medium-speed, high-speed, and DRS time deltas
+- Dashboard evidence boundary for direct FastF1 channels, derived metrics, heuristic inferences, and excluded unavailable data
 - Lap cleanliness validation from FastF1 context
 - Weather and tyre context
 - Natural-language Markdown or structured JSON reports

@@ -219,6 +219,7 @@ h3 {
 }
 
 .context-grid,
+.engineering-grid,
 .trace-layout,
 .detail-layout {
   display: grid;
@@ -227,6 +228,10 @@ h3 {
 
 .context-grid {
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+}
+
+.engineering-grid {
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
 }
 
 .trace-layout {
@@ -319,6 +324,8 @@ canvas {
 
 .sector-bars,
 .context-list,
+.fingerprint,
+.data-scope,
 .detections,
 .finding-detail {
   padding: 16px;
@@ -354,6 +361,132 @@ canvas {
   display: grid;
   gap: 8px;
   color: var(--muted);
+}
+
+.fingerprint {
+  display: grid;
+  gap: 10px;
+}
+
+.fingerprint-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 82px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.fingerprint-track {
+  height: 10px;
+  border-radius: 999px;
+  background: #edf1ef;
+  overflow: hidden;
+}
+
+.fingerprint-track i {
+  display: block;
+  height: 100%;
+}
+
+.fingerprint-track .gain {
+  background: var(--gain);
+}
+
+.fingerprint-track .loss {
+  background: var(--loss);
+}
+
+.fingerprint-row strong {
+  text-align: right;
+}
+
+.gain,
+.gain-text {
+  color: var(--gain);
+}
+
+.loss,
+.loss-text {
+  color: var(--loss);
+}
+
+.fingerprint-summary,
+.indicator-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+.fingerprint-summary span,
+.indicator-list span {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfb;
+  color: var(--muted);
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.indicator-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  padding-top: 10px;
+}
+
+.indicator-list strong {
+  font-size: 13px;
+}
+
+.data-scope {
+  display: grid;
+  gap: 10px;
+}
+
+.scope-group {
+  border-left: 3px solid var(--line);
+  padding-left: 10px;
+}
+
+.scope-group strong {
+  display: block;
+  font-size: 13px;
+}
+
+.scope-group p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.metric-table-wrap {
+  overflow: auto;
+}
+
+.metric-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.metric-table th,
+.metric-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.metric-table th {
+  color: var(--muted);
+  font-weight: 750;
+  background: #f8faf9;
+}
+
+.metric-table tbody tr:hover {
+  background: #f5f8f6;
 }
 
 .detections {
@@ -499,6 +632,7 @@ canvas {
   .workspace,
   .summary-band,
   .context-grid,
+  .engineering-grid,
   .trace-layout,
   .detail-layout {
     grid-template-columns: 1fr;

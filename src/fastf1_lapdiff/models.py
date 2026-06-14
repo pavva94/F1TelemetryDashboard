@@ -67,6 +67,52 @@ class Detection:
 
 
 @dataclass
+class SectionMetrics:
+    label: str
+    section_type: str
+    start_distance: float
+    end_distance: float
+    length: float
+    time_delta_seconds: float
+    average_speed_delta_kmh: float
+    minimum_speed_delta_kmh: float
+    maximum_speed_delta_kmh: float
+    entry_speed_delta_kmh: float
+    exit_speed_delta_kmh: float
+    reference_speed_gain_kmh: float
+    compared_speed_gain_kmh: float
+    speed_gain_delta_kmh: float
+    average_acceleration_delta_ms2: float
+    average_throttle_delta_pct: float
+    full_throttle_delta_m: float | None
+    brake_active_distance_delta_m: float
+    drs_active_distance_delta_m: float
+    reference_gear_mode: int | None
+    compared_gear_mode: int | None
+    average_rpm_delta: float
+    average_line_deviation_m: float | None
+    data_kind: EvidenceKind
+    confidence: Confidence
+    note: str
+
+
+@dataclass
+class PerformanceProfile:
+    straight_time_delta_seconds: float
+    braking_time_delta_seconds: float
+    low_speed_corner_delta_seconds: float
+    medium_speed_corner_delta_seconds: float
+    high_speed_corner_delta_seconds: float
+    drs_time_delta_seconds: float
+    average_corner_exit_speed_delta_kmh: float | None
+    average_full_throttle_delta_m: float | None
+    average_drs_distance_delta_m: float
+    stronger_indicators: list[str] = field(default_factory=list)
+    weaker_indicators: list[str] = field(default_factory=list)
+    inference_notes: list[str] = field(default_factory=list)
+
+
+@dataclass
 class ComparisonReport:
     reference: LapMetadata
     compared: LapMetadata
@@ -78,4 +124,3 @@ class ComparisonReport:
     tyre_context: list[str]
     detections: list[Detection]
     summary: str
-

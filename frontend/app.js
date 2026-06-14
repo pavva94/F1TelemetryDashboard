@@ -15,6 +15,9 @@ const els = {
   validity: document.querySelector("#validity"),
   sectors: document.querySelector("#sector-bars"),
   context: document.querySelector("#context-list"),
+  fingerprint: document.querySelector("#fingerprint"),
+  dataScope: document.querySelector("#data-scope"),
+  sectionMetrics: document.querySelector("#section-metrics"),
   detections: document.querySelector("#detections"),
   detail: document.querySelector("#finding-detail"),
   trace: document.querySelector("#trace-canvas"),
@@ -146,6 +149,9 @@ function renderDashboard(payload) {
   els.validity.textContent = `${report.reference_validity.classification} / ${report.compared_validity.classification}`;
   renderSectors(report);
   renderContext(report);
+  renderFingerprint(payload.performance_profile);
+  renderDataScope(payload.data_scope);
+  renderSectionMetrics(payload.section_metrics || []);
   renderDetections(payload);
   renderCharts(payload);
 }
@@ -174,6 +180,79 @@ function renderContext(report) {
     .map(([key, value]) => `${key}: ${value}`);
   const items = [...(report.tyre_context || []), ...weatherItems, "FastF1 does not expose steering angle, brake pressure, tyre wear percentage, fuel load, wheelspin, lockup, or real G-force."];
   els.context.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+}
+
+function renderFingerprint(profile) {
+  if (!profile) {
+    els.fingerprint.innerHTML = "";
+    return;
+  }
+  const buckets = [
+    ["Straights", profile.straight_time_delta_seconds],
+    ["Braking", profile.braking_time_delta_seconds],
+    ["Low-speed", profile.low_speed_corner_delta_seconds],
+    ["Medium-speed", profile.medium_speed_corner_delta_seconds],
+    ["High-speed", profile.high_speed_corner_delta_seconds],
+    ["DRS", profile.drs_time_delta_seconds],
+  ];
+  const max = Math.max(0.001, ...buckets.map(([, value]) => Math.abs(value || 0)));
+  const rows = buckets
+    .map(([label, value]) => {
+      const width = Math.max(3, (Math.abs(value || 0) / max) * 100);
+      const cls = value > 0 ? "loss" : "gain";
+      return `<div class="fingerprint-row">
+        <span>${escapeHtml(label)}</span>
+        <div class="fingerprint-track"><i class="${cls}" style="width:${width}%"></i></div>
+        <strong class="${cls}">${seconds(value)}</strong>
+      </div>`;
+    })
+    .join("");
+  const summary = [
+    profile.average_corner_exit_speed_delta_kmh !== null ? `Avg corner exit ${signed(profile.average_corner_exit_speed_delta_kmh, " km/h")}` : null,
+    profile.average_full_throttle_delta_m !== null ? `Full throttle ${signed(profile.average_full_throttle_delta_m, " m")}` : null,
+    `DRS active ${signed(profile.average_drs_distance_delta_m || 0, " m")}`,
+  ].filter(Boolean);
+  const stronger = listBlock("Stronger indicators", profile.stronger_indicators || []);
+  const weaker = listBlock("Weaker indicators", profile.weaker_indicators || []);
+  els.fingerprint.innerHTML = `${rows}<div class="fingerprint-summary">${summary.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>${stronger}${weaker}`;
+}
+
+function renderDataScope(scope) {
+  if (!scope) {
+    els.dataScope.innerHTML = "";
+    return;
+  }
+  const groups = [
+    ["Direct", scope.direct || []],
+    ["Derived", scope.derived || []],
+    ["Heuristic", scope.heuristic || []],
+    ["Excluded", scope.excluded || []],
+  ];
+  els.dataScope.innerHTML = groups
+    .map(([label, items]) => `<div class="scope-group">
+      <strong>${escapeHtml(label)}</strong>
+      <p>${escapeHtml(items.join(", "))}</p>
+    </div>`)
+    .join("");
+}
+
+function renderSectionMetrics(metrics) {
+  els.sectionMetrics.innerHTML = metrics
+    .map((metric) => {
+      const gear = metric.reference_gear_mode && metric.compared_gear_mode ? `${metric.reference_gear_mode} → ${metric.compared_gear_mode}` : "--";
+      return `<tr title="${escapeHtml(metric.note || "")}">
+        <td>${escapeHtml(metric.label)}</td>
+        <td>${escapeHtml(metric.section_type)}</td>
+        <td class="${metric.time_delta_seconds > 0 ? "loss-text" : "gain-text"}">${seconds(metric.time_delta_seconds)}</td>
+        <td>${signed(metric.exit_speed_delta_kmh, " km/h")}</td>
+        <td>${signed(metric.maximum_speed_delta_kmh, " km/h")}</td>
+        <td>${signed(metric.brake_active_distance_delta_m, " m")}</td>
+        <td>${signed(metric.drs_active_distance_delta_m, " m")}</td>
+        <td>${escapeHtml(gear)}</td>
+        <td><span class="tag">${escapeHtml(metric.confidence)}</span></td>
+      </tr>`;
+    })
+    .join("");
 }
 
 function renderDetections(payload) {
@@ -507,6 +586,15 @@ function driverComparison(detection, report) {
 
 function seconds(value) {
   return isFiniteNumber(value) ? `${value >= 0 ? "+" : ""}${value.toFixed(3)} s` : "--";
+}
+
+function signed(value, unit = "") {
+  return isFiniteNumber(value) ? `${value >= 0 ? "+" : ""}${value.toFixed(1)}${unit}` : "--";
+}
+
+function listBlock(title, items) {
+  if (!items?.length) return "";
+  return `<div class="indicator-list"><strong>${escapeHtml(title)}</strong>${items.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>`;
 }
 
 function clock(value) {

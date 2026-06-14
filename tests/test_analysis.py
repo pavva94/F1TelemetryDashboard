@@ -89,6 +89,11 @@ def test_dashboard_payload_contains_report_sections_and_traces() -> None:
 
     assert payload["report"]["total_delta_seconds"] is not None
     assert payload["sections"]
+    assert payload["section_metrics"]
+    assert "straight_time_delta_seconds" in payload["performance_profile"]
+    assert payload["performance_profile"]["inference_notes"]
+    assert "direct" in payload["data_scope"]
+    assert "heuristic" in payload["data_scope"]
     assert payload["telemetry"]["Distance"]
     assert payload["telemetry"]["delta_time"]
     assert len(payload["telemetry"]["Distance"]) == len(payload["telemetry"]["delta_time"])
