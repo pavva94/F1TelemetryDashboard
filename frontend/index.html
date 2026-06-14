@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FastF1 Lap Difference Dashboard</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="workspace">
+        <aside class="sidebar" aria-label="Telemetry selection">
+          <div class="brand">
+            <span class="mark" aria-hidden="true"></span>
+            <div>
+              <h1>FastF1 LapDiff</h1>
+              <p>Best-lap comparison from public FastF1 data</p>
+            </div>
+          </div>
+
+          <form id="selection-form" class="controls">
+            <label>
+              <span>Season</span>
+              <select id="season"></select>
+            </label>
+            <label>
+              <span>Event</span>
+              <select id="event"></select>
+            </label>
+            <label>
+              <span>Session</span>
+              <select id="session"></select>
+            </label>
+            <label>
+              <span>Car / Team</span>
+              <select id="team"></select>
+            </label>
+            <label>
+              <span>Reference driver</span>
+              <select id="driver-a"></select>
+            </label>
+            <label>
+              <span>Compared driver</span>
+              <select id="driver-b"></select>
+            </label>
+            <button class="primary" type="submit">
+              <span aria-hidden="true">↻</span>
+              Analyze best laps
+            </button>
+          </form>
+
+          <div class="note">
+            Same driver selected twice compares that driver’s two fastest comparable laps. Two drivers compares each driver’s best comparable lap.
+          </div>
+        </aside>
+
+        <section class="dashboard" aria-live="polite">
+          <div id="status" class="status">Select a season to load available FastF1 events.</div>
+
+          <section class="summary-band">
+            <div>
+              <span class="eyebrow">Selection</span>
+              <h2 id="selection-title">No session loaded</h2>
+              <p id="summary-text">Choose a season, event, session, and drivers to run the telemetry analysis.</p>
+            </div>
+            <div class="metrics">
+              <div class="metric">
+                <span>Total delta</span>
+                <strong id="total-delta">--</strong>
+              </div>
+              <div class="metric">
+                <span>Reference</span>
+                <strong id="reference-lap">--</strong>
+              </div>
+              <div class="metric">
+                <span>Compared</span>
+                <strong id="compared-lap">--</strong>
+              </div>
+              <div class="metric">
+                <span>Validity</span>
+                <strong id="validity">--</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="context-grid">
+            <div class="panel">
+              <div class="panel-head">
+                <h3>Sector Delta</h3>
+              </div>
+              <div id="sector-bars" class="sector-bars"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head">
+                <h3>Tyre And Weather Context</h3>
+              </div>
+              <ul id="context-list" class="context-list"></ul>
+            </div>
+          </section>
+
+          <section class="trace-layout">
+            <div class="panel wide">
+              <div class="panel-head">
+                <h3>Aligned Telemetry Over Distance</h3>
+                <div class="legend">
+                  <span><i class="ref"></i>Reference</span>
+                  <span><i class="cmp"></i>Compared</span>
+                  <span><i class="delta"></i>Delta</span>
+                </div>
+              </div>
+              <canvas id="trace-canvas" width="1100" height="420"></canvas>
+            </div>
+            <div class="panel map-panel">
+              <div class="panel-head">
+                <h3>Track Map</h3>
+              </div>
+              <canvas id="map-canvas" width="480" height="420"></canvas>
+            </div>
+          </section>
+
+          <section class="detail-layout">
+            <div class="panel detections-panel">
+              <div class="panel-head">
+                <h3>Main Findings</h3>
+                <div class="tabs" role="tablist" aria-label="Detection filter">
+                  <button class="tab active" type="button" data-filter="all">All</button>
+                  <button class="tab" type="button" data-filter="loss">Losses</button>
+                  <button class="tab" type="button" data-filter="gain">Gains</button>
+                  <button class="tab" type="button" data-filter="heuristic">Heuristics</button>
+                </div>
+              </div>
+              <div id="detections" class="detections"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head">
+                <h3>Selected Finding</h3>
+              </div>
+              <div id="finding-detail" class="finding-detail">
+                Select a finding to inspect evidence and interpretation.
+              </div>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="/assets/app.js"></script>
+  </body>
+</html>
+

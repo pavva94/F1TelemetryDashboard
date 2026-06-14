@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fastf1-lapdiff"
+version = "0.1.0"
+description = "FastF1 lap difference detection and telemetry comparison tool"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.111",
+  "fastf1>=3.3",
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "uvicorn[standard]>=0.30",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+fastf1-lapdiff = "fastf1_lapdiff.cli:main"
+fastf1-lapdiff-web = "fastf1_lapdiff.web:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
