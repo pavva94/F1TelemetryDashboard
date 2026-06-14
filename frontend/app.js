@@ -18,6 +18,7 @@ const els = {
   fingerprint: document.querySelector("#fingerprint"),
   dataScope: document.querySelector("#data-scope"),
   sectionMetrics: document.querySelector("#section-metrics"),
+  traceLegend: document.querySelector("#trace-legend"),
   detections: document.querySelector("#detections"),
   detail: document.querySelector("#finding-detail"),
   trace: document.querySelector("#trace-canvas"),
@@ -152,6 +153,7 @@ function renderDashboard(payload) {
   renderFingerprint(payload.performance_profile);
   renderDataScope(payload.data_scope);
   renderSectionMetrics(payload.section_metrics || []);
+  renderTraceLegend(report);
   renderDetections(payload);
   renderCharts(payload);
 }
@@ -240,7 +242,7 @@ function renderSectionMetrics(metrics) {
   els.sectionMetrics.innerHTML = metrics
     .map((metric) => {
       const gear = metric.reference_gear_mode && metric.compared_gear_mode ? `${metric.reference_gear_mode} → ${metric.compared_gear_mode}` : "--";
-      return `<tr title="${escapeHtml(metric.note || "")}">
+      return `<tr>
         <td>${escapeHtml(metric.label)}</td>
         <td>${escapeHtml(metric.section_type)}</td>
         <td class="${metric.time_delta_seconds > 0 ? "loss-text" : "gain-text"}">${seconds(metric.time_delta_seconds)}</td>
@@ -250,9 +252,17 @@ function renderSectionMetrics(metrics) {
         <td>${signed(metric.drs_active_distance_delta_m, " m")}</td>
         <td>${escapeHtml(gear)}</td>
         <td><span class="tag">${escapeHtml(metric.confidence)}</span></td>
+        <td class="metric-note">${escapeHtml(metric.note || "")}</td>
       </tr>`;
     })
     .join("");
+}
+
+function renderTraceLegend(report) {
+  const labels = telemetryLabels(report);
+  els.traceLegend.innerHTML = `<span><i class="ref"></i>${escapeHtml(labels.reference)}</span>
+    <span><i class="cmp"></i>${escapeHtml(labels.compared)}</span>
+    <span><i class="delta"></i>Delta time</span>`;
 }
 
 function renderDetections(payload) {
@@ -304,6 +314,7 @@ function renderDetections(payload) {
 
 function renderFindingDetail(detection, payload) {
   const comparison = driverComparison(detection, payload.report);
+  const labels = telemetryLabels(payload.report);
   els.detail.innerHTML = `<h4>${escapeHtml(detection.difference_type)}</h4>
     <div class="driver-comparison">
       <div>
@@ -321,6 +332,11 @@ function renderFindingDetail(detection, payload) {
       <strong>Telemetry for this finding</strong>
       <span>${Math.round(detection.start_distance)} m to ${Math.round(detection.end_distance)} m</span>
     </div>
+    <div class="telemetry-legend">
+      <span><i class="ref"></i>${escapeHtml(labels.reference)}</span>
+      <span><i class="cmp"></i>${escapeHtml(labels.compared)}</span>
+      <span><i class="delta"></i>Delta time</span>
+    </div>
     <canvas id="finding-telemetry" class="finding-telemetry" width="620" height="360"></canvas>
     <ul>${(detection.evidence || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
     <p>${escapeHtml(detection.interpretation)}</p>`;
@@ -330,6 +346,13 @@ function renderFindingDetail(detection, payload) {
 function renderCharts(payload) {
   drawTrace(payload.telemetry, payload.sections || []);
   drawMap(payload.telemetry, payload.report.detections || []);
+}
+
+function telemetryLabels(report) {
+  return {
+    reference: `Reference: ${lapShort(report.reference)}`,
+    compared: `Compared: ${lapShort(report.compared)}`,
+  };
 }
 
 function drawTrace(t, sections) {
@@ -401,6 +424,7 @@ function drawFindingTelemetry(canvas, t, detection) {
     if (pane.delta) drawSeries(ctx, subset.Distance, pane.delta, pane, "var-delta");
   });
 
+  drawTelemetryKey(ctx, w);
   drawDistanceMarker(ctx, x1, "start", h);
   drawDistanceMarker(ctx, x2, "end", h);
 }
@@ -468,6 +492,28 @@ function drawSeries(ctx, distance, values, pane, token) {
     else ctx.lineTo(x, y);
   });
   ctx.stroke();
+}
+
+function drawTelemetryKey(ctx, w) {
+  const items = [
+    ["Reference", css("--ref")],
+    ["Compared", css("--cmp")],
+    ["Delta", css("--delta")],
+  ];
+  let x = Math.max(56, w - 226);
+  const y = 18;
+  ctx.font = "12px Inter, sans-serif";
+  items.forEach(([label, color]) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 18, y);
+    ctx.stroke();
+    ctx.fillStyle = "#26312e";
+    ctx.fillText(label, x + 24, y + 4);
+    x += label === "Compared" ? 88 : 78;
+  });
 }
 
 function drawPath(ctx, xs, ys, bounds, w, h, color, lineWidth) {

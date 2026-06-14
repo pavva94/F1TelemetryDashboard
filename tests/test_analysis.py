@@ -90,6 +90,7 @@ def test_dashboard_payload_contains_report_sections_and_traces() -> None:
     assert payload["report"]["total_delta_seconds"] is not None
     assert payload["sections"]
     assert payload["section_metrics"]
+    assert any("VER L12 gains" in metric["note"] or "VER L10 and VER L12" in metric["note"] for metric in payload["section_metrics"])
     assert "straight_time_delta_seconds" in payload["performance_profile"]
     assert payload["performance_profile"]["inference_notes"]
     assert "direct" in payload["data_scope"]

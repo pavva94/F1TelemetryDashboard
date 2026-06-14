@@ -16,7 +16,7 @@ def build_dashboard_payload(reference: LapData, compared: LapData, weather_conte
     aligned = align_laps(reference.telemetry, compared.telemetry)
     report = analyze_laps(reference, compared, weather_context)
     sections = make_sections(aligned)
-    section_metrics = build_section_metrics(aligned, sections)
+    section_metrics = build_section_metrics(aligned, sections, _lap_label(reference), _lap_label(compared))
     performance_profile = build_performance_profile(section_metrics)
 
     return {
@@ -64,6 +64,10 @@ def _telemetry_payload(aligned: Any, max_points: int = 420) -> dict[str, list[fl
         "accel_diff",
     ]
     return {channel: [_number(value) for value in data[channel].tolist()] for channel in channels if channel in data.columns}
+
+
+def _lap_label(lap: LapData) -> str:
+    return f"{lap.metadata.driver} L{lap.metadata.lap_number}"
 
 
 def _number(value: Any) -> float | None:

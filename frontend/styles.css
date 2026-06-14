@@ -240,6 +240,7 @@ h3 {
 
 .detail-layout {
   grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  align-items: start;
 }
 
 .panel {
@@ -466,7 +467,7 @@ canvas {
 
 .metric-table {
   width: 100%;
-  min-width: 860px;
+  min-width: 1060px;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -489,11 +490,25 @@ canvas {
   background: #f5f8f6;
 }
 
+.metric-note {
+  min-width: 280px;
+  max-width: 420px;
+  white-space: normal;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .detections {
-  max-height: 520px;
+  max-height: min(760px, 70vh);
   overflow: auto;
   display: grid;
   gap: 10px;
+  align-content: start;
+  scrollbar-gutter: stable;
+}
+
+.detections-panel {
+  align-self: start;
 }
 
 .finding {
@@ -614,6 +629,38 @@ canvas {
 .finding-telemetry-head span {
   color: var(--muted);
   font-size: 12px;
+}
+
+.telemetry-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 8px;
+}
+
+.telemetry-legend span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.telemetry-legend i {
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.telemetry-legend .ref {
+  background: var(--ref);
+}
+
+.telemetry-legend .cmp {
+  background: var(--cmp);
+}
+
+.telemetry-legend .delta {
+  background: var(--delta);
 }
 
 .finding-telemetry {

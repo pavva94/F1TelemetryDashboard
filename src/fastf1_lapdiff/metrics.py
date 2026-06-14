@@ -15,13 +15,13 @@ BRAKING_TYPES = {"Heavy braking zone", "Medium braking zone"}
 CORNER_TYPES = {"Low-speed corner", "Medium-speed corner", "High-speed corner"}
 
 
-def build_section_metrics(aligned: pd.DataFrame, sections: list[Section]) -> list[SectionMetrics]:
+def build_section_metrics(aligned: pd.DataFrame, sections: list[Section], reference_label: str = "Reference", compared_label: str = "Compared") -> list[SectionMetrics]:
     metrics: list[SectionMetrics] = []
     for section in sections:
         part = _slice(aligned, section)
         if part.empty:
             continue
-        metrics.append(_section_metrics(part, section))
+        metrics.append(_section_metrics(part, section, reference_label, compared_label))
     return metrics
 
 
@@ -53,7 +53,7 @@ def build_performance_profile(section_metrics: list[SectionMetrics]) -> Performa
     return profile
 
 
-def _section_metrics(part: pd.DataFrame, section: Section) -> SectionMetrics:
+def _section_metrics(part: pd.DataFrame, section: Section, reference_label: str, compared_label: str) -> SectionMetrics:
     ref_start_speed = _window_mean(part, 0.06, "ref_Speed")
     cmp_start_speed = _window_mean(part, 0.06, "cmp_Speed")
     ref_end_speed = _window_mean(part, 0.94, "ref_Speed")
@@ -92,7 +92,7 @@ def _section_metrics(part: pd.DataFrame, section: Section) -> SectionMetrics:
         average_line_deviation_m=_optional_mean(part, "line_deviation"),
         data_kind=data_kind,  # type: ignore[arg-type]
         confidence=confidence,  # type: ignore[arg-type]
-        note=_section_note(section, time_delta, cmp_end_speed - ref_end_speed, drs_delta, brake_delta),
+        note=_section_note(section, time_delta, cmp_end_speed - ref_end_speed, drs_delta, brake_delta, reference_label, compared_label),
     )
 
 
@@ -157,24 +157,30 @@ def _confidence(part: pd.DataFrame, magnitude: float, section: Section) -> str:
     return "Low"
 
 
-def _section_note(section: Section, time_delta: float, exit_speed_delta: float, drs_delta: float, brake_delta: float) -> str:
-    subject = "compared lap"
+def _section_note(section: Section, time_delta: float, exit_speed_delta: float, drs_delta: float, brake_delta: float, reference_label: str, compared_label: str) -> str:
+    if time_delta > 0:
+        loser = compared_label
+        gainer = reference_label
+    else:
+        loser = reference_label
+        gainer = compared_label
+
     if abs(time_delta) < 0.025:
-        return "Near-neutral time impact; use channel deltas as supporting context."
-    direction = "lost" if time_delta > 0 else "gained"
+        return f"Near-neutral time impact between {reference_label} and {compared_label}; use channel deltas as supporting context."
+    outcome = f"{gainer} gains {abs(time_delta):.3f} s over {loser}"
     if section.section_type in STRAIGHT_TYPES:
         if abs(drs_delta) > 20:
-            return f"The {subject} {direction} time on a straight-like section with different DRS active distance."
-        return f"The {subject} {direction} time on a straight-like section; exit speed, DRS, tow, and deployment context can all contribute."
+            return f"{outcome} on a straight-like section with different DRS active distance."
+        return f"{outcome} on a straight-like section; exit speed, DRS, tow, and deployment context can all contribute."
     if section.section_type in BRAKING_TYPES:
         if abs(brake_delta) > 12:
-            return f"The {subject} {direction} time in a braking zone with different brake-on distance."
-        return f"The {subject} {direction} time in a braking zone; FastF1 brake data is boolean only."
+            return f"{outcome} in a braking zone with different brake-on distance."
+        return f"{outcome} in a braking zone; FastF1 brake data is boolean only."
     if section.section_type in CORNER_TYPES:
         if abs(exit_speed_delta) > 4:
-            return f"The {subject} {direction} time in a corner section with a meaningful exit-speed delta."
-        return f"The {subject} {direction} time in a corner section; speed and throttle describe behavior, not steering balance."
-    return f"The {subject} {direction} time in this section."
+            return f"{outcome} in a corner section with a meaningful exit-speed delta."
+        return f"{outcome} in a corner section; speed and throttle describe behavior, not steering balance."
+    return f"{outcome} in this section."
 
 
 def _sum_delta(metrics: Iterable[SectionMetrics], section_types: set[str]) -> float:
