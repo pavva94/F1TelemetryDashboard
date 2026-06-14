@@ -3,37 +3,180 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>FastF1 Lap Difference Dashboard</title>
+    <title>FastF1 Race Engineering Dashboard</title>
     <link rel="stylesheet" href="/assets/styles.css" />
   </head>
   <body>
     <main class="shell">
-      <section class="workspace">
-        <aside class="sidebar" aria-label="Telemetry selection">
-          <div class="brand">
-            <span class="mark" aria-hidden="true"></span>
-            <div>
-              <h1>FastF1 LapDiff</h1>
-              <p>Best-lap comparison from public FastF1 data</p>
+      <header class="topbar">
+        <div class="brand">
+          <span class="mark" aria-hidden="true"></span>
+          <div>
+            <h1>FastF1 Race Engineering</h1>
+            <p>Race summary first, lap comparison when you need the detail</p>
+          </div>
+        </div>
+
+        <form id="race-form" class="race-search">
+          <label>
+            <span>Season</span>
+            <select id="season"></select>
+          </label>
+          <label>
+            <span>Race</span>
+            <select id="event"></select>
+          </label>
+          <label>
+            <span>Track</span>
+            <input id="track" type="text" readonly value="--" />
+          </label>
+          <button id="load-race" class="primary" type="submit">Load race</button>
+        </form>
+      </header>
+
+      <section class="dashboard" aria-live="polite">
+        <div id="status" class="status">Select a season and race to load the race summary.</div>
+
+        <section class="race-hero">
+          <div>
+            <span class="eyebrow">Race Overview</span>
+            <h2 id="race-title">No race loaded</h2>
+            <p id="race-summary-text">Choose a year and race above. The comparison tools will unlock after the race context is loaded.</p>
+          </div>
+          <div class="metrics race-metrics">
+            <div class="metric">
+              <span>Winner</span>
+              <strong id="race-winner">--</strong>
+            </div>
+            <div class="metric">
+              <span>Race time</span>
+              <strong id="race-time">--</strong>
+            </div>
+            <div class="metric">
+              <span>Fastest lap</span>
+              <strong id="fastest-lap">--</strong>
+            </div>
+            <div class="metric">
+              <span>Laps</span>
+              <strong id="race-laps">--</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="race-grid">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Final Standings</h3>
+            </div>
+            <div class="standings-wrap">
+              <table class="standings-table">
+                <thead>
+                  <tr>
+                    <th>Pos</th>
+                    <th>Driver</th>
+                    <th>Team</th>
+                    <th>Grid</th>
+                    <th>Time / Status</th>
+                    <th>Pts</th>
+                  </tr>
+                </thead>
+                <tbody id="standings"></tbody>
+              </table>
             </div>
           </div>
 
-          <form id="selection-form" class="controls">
+          <div class="panel position-panel">
+            <div class="panel-head">
+              <h3>Position By Lap</h3>
+            </div>
+            <canvas id="position-chart" width="760" height="520"></canvas>
+            <div id="position-tooltip" class="position-tooltip" hidden></div>
+          </div>
+        </section>
+
+        <section class="race-detail-grid">
+          <div class="panel wide">
+            <div class="panel-head">
+              <h3>Driver Average Pace Distribution</h3>
+            </div>
+            <div class="chart-surface">
+              <canvas id="pace-violin-chart" width="1100" height="520"></canvas>
+              <div id="pace-violin-tooltip" class="chart-tooltip" hidden></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Team Race Pace</h3>
+            </div>
+            <div class="chart-surface">
+              <canvas id="team-pace-chart" width="720" height="440"></canvas>
+              <div id="team-pace-tooltip" class="chart-tooltip" hidden></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="sector-grid">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Fastest Sector 1</h3>
+            </div>
+            <canvas id="sector1-chart" width="540" height="420"></canvas>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Fastest Sector 2</h3>
+            </div>
+            <canvas id="sector2-chart" width="540" height="420"></canvas>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Fastest Sector 3</h3>
+            </div>
+            <canvas id="sector3-chart" width="540" height="420"></canvas>
+          </div>
+        </section>
+
+        <section class="race-detail-grid">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Race Pace And Fuel Proxy</h3>
+            </div>
+            <div class="chart-surface">
+              <canvas id="pace-trend-chart" width="760" height="440"></canvas>
+              <div id="pace-trend-tooltip" class="chart-tooltip" hidden></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Tyres, Stints, And Pit Stops</h3>
+            </div>
+            <div class="chart-surface">
+              <canvas id="stint-timeline-chart" width="760" height="440"></canvas>
+              <div id="stint-tooltip" class="chart-tooltip" hidden></div>
+            </div>
+            <div id="race-insight-tables" class="race-insight-tables"></div>
+          </div>
+        </section>
+
+        <section class="comparison-shell">
+          <div class="section-title">
+            <div>
+              <span class="eyebrow">Lap Comparison</span>
+              <h2>Telemetry Detail</h2>
+            </div>
+            <p>Choose one session and driver for each side; for example, compare a qualifying best lap against a race best lap.</p>
+          </div>
+
+          <form id="comparison-form" class="comparison-controls">
             <label>
-              <span>Season</span>
-              <select id="season"></select>
+              <span>Reference session</span>
+              <select id="session-a"></select>
             </label>
             <label>
-              <span>Event</span>
-              <select id="event"></select>
-            </label>
-            <label>
-              <span>Session</span>
-              <select id="session"></select>
-            </label>
-            <label>
-              <span>Car / Team</span>
-              <select id="team"></select>
+              <span>Compared session</span>
+              <select id="session-b"></select>
             </label>
             <label>
               <span>Reference driver</span>
@@ -43,25 +186,18 @@
               <span>Compared driver</span>
               <select id="driver-b"></select>
             </label>
-            <button class="primary" type="submit">
-              <span aria-hidden="true">↻</span>
-              Analyze best laps
-            </button>
+            <label>
+              <span>Team filter</span>
+              <select id="team"></select>
+            </label>
+            <button class="primary" type="submit">Analyze best laps</button>
           </form>
-
-          <div class="note">
-            Same driver selected twice compares that driver’s two fastest comparable laps. Two drivers compares each driver’s best comparable lap.
-          </div>
-        </aside>
-
-        <section class="dashboard" aria-live="polite">
-          <div id="status" class="status">Select a season to load available FastF1 events.</div>
 
           <section class="summary-band">
             <div>
               <span class="eyebrow">Selection</span>
-              <h2 id="selection-title">No session loaded</h2>
-              <p id="summary-text">Choose a season, event, session, and drivers to run the telemetry analysis.</p>
+              <h2 id="selection-title">No comparison loaded</h2>
+              <p id="summary-text">Load a race, choose comparison drivers, and run the telemetry analysis.</p>
             </div>
             <div class="metrics">
               <div class="metric">
@@ -139,7 +275,7 @@
           </section>
 
           <section class="trace-layout">
-            <div class="panel wide">
+            <div class="panel wide trace-panel">
               <div class="panel-head">
                 <h3>Aligned Telemetry Over Distance</h3>
                 <div id="trace-legend" class="legend">
@@ -149,6 +285,7 @@
                 </div>
               </div>
               <canvas id="trace-canvas" width="1100" height="420"></canvas>
+              <div id="trace-tooltip" class="trace-tooltip" hidden></div>
             </div>
             <div class="panel map-panel">
               <div class="panel-head">

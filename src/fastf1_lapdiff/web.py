@@ -10,7 +10,9 @@ from .fastf1_loader import (
     list_events,
     list_session_entries,
     load_fastf1_session,
+    race_summary,
     select_best_comparison_laps,
+    select_best_lap_from_session,
     weather_context_for_lap,
 )
 
@@ -57,20 +59,51 @@ def create_app() -> Any:
         except Exception as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    @app.get("/api/compare-best-laps")
-    def compare_best_laps(year: int, event: str, session: str, driver_a: str, driver_b: str | None = None) -> JSONResponse:
+    @app.get("/api/race-summary")
+    def race_summary_route(year: int, event: str) -> JSONResponse:
         try:
-            fastf1_session = load_fastf1_session(year, event, session, DEFAULT_CACHE_DIR)
-            reference, compared = select_best_comparison_laps(fastf1_session, driver_a, driver_b)
-            weather = weather_context_for_lap(fastf1_session, compared.metadata.lap_number)
+            data = race_summary(year, event, DEFAULT_CACHE_DIR)
+            return JSONResponse(jsonable_encoder(data))
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    @app.get("/api/compare-best-laps")
+    def compare_best_laps(
+        year: int,
+        event: str,
+        session: str | None = None,
+        driver_a: str = Query(...),
+        driver_b: str | None = None,
+        session_a: str | None = None,
+        session_b: str | None = None,
+    ) -> JSONResponse:
+        try:
+            reference_session_name = session_a or session
+            compared_session_name = session_b or session_a or session
+            if not reference_session_name or not compared_session_name:
+                raise ValueError("Both reference and compared sessions are required.")
+
+            reference_session = load_fastf1_session(year, event, reference_session_name, DEFAULT_CACHE_DIR)
+            compared_session = reference_session if compared_session_name == reference_session_name else load_fastf1_session(year, event, compared_session_name, DEFAULT_CACHE_DIR)
+            compared_driver = driver_b or driver_a
+
+            if reference_session_name == compared_session_name:
+                reference, compared = select_best_comparison_laps(reference_session, driver_a, compared_driver)
+            else:
+                reference = select_best_lap_from_session(reference_session, driver_a)
+                compared = select_best_lap_from_session(compared_session, compared_driver)
+
+            weather = weather_context_for_lap(compared_session, compared.metadata.lap_number)
             payload = build_dashboard_payload(reference, compared, weather)
             payload["selection"] = {
                 "year": year,
                 "event": event,
-                "session": session,
+                "session": reference_session_name if reference_session_name == compared_session_name else f"{reference_session_name} vs {compared_session_name}",
+                "sessionA": reference_session_name,
+                "sessionB": compared_session_name,
                 "driverA": driver_a,
-                "driverB": driver_b or driver_a,
-                "mode": "same-driver-two-best-laps" if not driver_b or driver_a == driver_b else "driver-vs-driver-best-laps",
+                "driverB": compared_driver,
+                "mode": _comparison_mode(reference_session_name, compared_session_name, driver_a, compared_driver),
             }
             return JSONResponse(jsonable_encoder(payload))
         except Exception as exc:
@@ -85,6 +118,14 @@ def create_app() -> Any:
             return FileResponse(frontend_dir / "index.html")
 
     return app
+
+
+def _comparison_mode(session_a: str, session_b: str, driver_a: str, driver_b: str) -> str:
+    if session_a != session_b:
+        return "cross-session-best-laps"
+    if driver_a == driver_b:
+        return "same-driver-two-best-laps"
+    return "driver-vs-driver-best-laps"
 
 
 def main() -> int:

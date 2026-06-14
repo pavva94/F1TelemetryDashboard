@@ -5,6 +5,7 @@ import pandas as pd
 
 from fastf1_lapdiff import LapData, LapMetadata, align_laps, analyze_laps
 from fastf1_lapdiff.dashboard import build_dashboard_payload
+from fastf1_lapdiff.fastf1_loader import _race_insights
 
 
 def _lap(delay_exit: bool = False, drs: int = 1, lap_time: float = 90.0) -> pd.DataFrame:
@@ -98,3 +99,80 @@ def test_dashboard_payload_contains_report_sections_and_traces() -> None:
     assert payload["telemetry"]["Distance"]
     assert payload["telemetry"]["delta_time"]
     assert len(payload["telemetry"]["Distance"]) == len(payload["telemetry"]["delta_time"])
+
+
+def test_race_insights_summarize_pace_sectors_tyres_and_pits() -> None:
+    laps = pd.DataFrame(
+        [
+            {
+                "Driver": "VER",
+                "Team": "Red Bull Racing",
+                "LapNumber": 1,
+                "LapTime": pd.to_timedelta(90.0, unit="s"),
+                "Sector1Time": pd.to_timedelta(28.0, unit="s"),
+                "Sector2Time": pd.to_timedelta(31.0, unit="s"),
+                "Sector3Time": pd.to_timedelta(31.0, unit="s"),
+                "Compound": "MEDIUM",
+                "TyreLife": 1,
+                "Stint": 1,
+                "PitInTime": pd.NaT,
+                "PitOutTime": pd.NaT,
+                "IsAccurate": True,
+            },
+            {
+                "Driver": "VER",
+                "Team": "Red Bull Racing",
+                "LapNumber": 2,
+                "LapTime": pd.to_timedelta(91.0, unit="s"),
+                "Sector1Time": pd.to_timedelta(28.5, unit="s"),
+                "Sector2Time": pd.to_timedelta(31.5, unit="s"),
+                "Sector3Time": pd.to_timedelta(31.0, unit="s"),
+                "Compound": "MEDIUM",
+                "TyreLife": 2,
+                "Stint": 1,
+                "PitInTime": pd.to_timedelta(180.0, unit="s"),
+                "PitOutTime": pd.NaT,
+                "IsAccurate": True,
+            },
+            {
+                "Driver": "VER",
+                "Team": "Red Bull Racing",
+                "LapNumber": 3,
+                "LapTime": pd.to_timedelta(89.8, unit="s"),
+                "Sector1Time": pd.to_timedelta(27.9, unit="s"),
+                "Sector2Time": pd.to_timedelta(30.9, unit="s"),
+                "Sector3Time": pd.to_timedelta(31.0, unit="s"),
+                "Compound": "SOFT",
+                "TyreLife": 1,
+                "Stint": 2,
+                "PitInTime": pd.NaT,
+                "PitOutTime": pd.to_timedelta(204.0, unit="s"),
+                "IsAccurate": True,
+            },
+            {
+                "Driver": "LEC",
+                "Team": "Ferrari",
+                "LapNumber": 1,
+                "LapTime": pd.to_timedelta(90.5, unit="s"),
+                "Sector1Time": pd.to_timedelta(28.2, unit="s"),
+                "Sector2Time": pd.to_timedelta(30.7, unit="s"),
+                "Sector3Time": pd.to_timedelta(31.6, unit="s"),
+                "Compound": "MEDIUM",
+                "TyreLife": 1,
+                "Stint": 1,
+                "PitInTime": pd.NaT,
+                "PitOutTime": pd.NaT,
+                "IsAccurate": True,
+            },
+        ]
+    )
+
+    insights = _race_insights(laps)
+
+    assert insights["driverPace"][0]["driver"] == "VER"
+    assert insights["fastestSectors"]["sector2"][0]["driver"] == "LEC"
+    assert insights["teamPace"][0]["team"] == "Red Bull Racing"
+    assert {item["compound"] for item in insights["tyreCompounds"]} == {"MEDIUM"}
+    assert insights["pitStops"][0]["driver"] == "VER"
+    assert insights["pitStops"][0]["pitLaneTime"] == 24.0
+    assert insights["notes"]
