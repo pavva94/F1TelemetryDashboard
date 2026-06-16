@@ -314,7 +314,8 @@ h3 {
   box-shadow: var(--shadow);
 }
 
-.trace-panel {
+.trace-panel,
+.position-panel {
   position: relative;
 }
 
@@ -344,6 +345,7 @@ canvas {
 
 #position-chart {
   height: 520px;
+  cursor: crosshair;
 }
 
 #pace-violin-chart {
@@ -359,13 +361,18 @@ canvas {
   height: 440px;
 }
 
+#pit-stop-chart {
+  height: 360px;
+}
+
 .chart-surface {
   position: relative;
 }
 
 #pace-violin-chart,
 #pace-trend-chart,
-#stint-timeline-chart {
+#stint-timeline-chart,
+#pit-stop-chart {
   cursor: crosshair;
 }
 
@@ -404,6 +411,22 @@ canvas {
   font-size: 12px;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.position-tooltip {
+  width: min(260px, calc(100% - 20px));
+  max-height: 360px;
+  overflow: auto;
+}
+
+.pit-stop-surface {
+  border-top: 1px solid var(--line);
+}
+
+#pit-stop-tooltip {
+  width: min(300px, calc(100% - 20px));
+  max-height: 300px;
+  overflow: auto;
 }
 
 .standings-wrap {

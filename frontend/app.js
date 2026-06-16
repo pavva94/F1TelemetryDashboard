@@ -19,6 +19,7 @@ const els = {
   raceLaps: document.querySelector("#race-laps"),
   standings: document.querySelector("#standings"),
   positionChart: document.querySelector("#position-chart"),
+  positionTooltip: document.querySelector("#position-tooltip"),
   paceViolinChart: document.querySelector("#pace-violin-chart"),
   paceViolinTooltip: document.querySelector("#pace-violin-tooltip"),
   teamPaceChart: document.querySelector("#team-pace-chart"),
@@ -30,6 +31,8 @@ const els = {
   paceTrendTooltip: document.querySelector("#pace-trend-tooltip"),
   stintTimelineChart: document.querySelector("#stint-timeline-chart"),
   stintTooltip: document.querySelector("#stint-tooltip"),
+  pitStopChart: document.querySelector("#pit-stop-chart"),
+  pitStopTooltip: document.querySelector("#pit-stop-tooltip"),
   raceInsightTables: document.querySelector("#race-insight-tables"),
   title: document.querySelector("#selection-title"),
   summary: document.querySelector("#summary-text"),
@@ -55,10 +58,12 @@ let comparedDrivers = [];
 let currentPayload = null;
 let currentRace = null;
 let currentFilter = "all";
+let positionHoverLap = null;
 let traceHoverIndex = null;
 let paceViolinHoverIndex = null;
 let paceTrendHoverIndex = null;
 let stintHoverIndex = null;
+let pitStopHoverIndex = null;
 let teamPaceHoverIndex = null;
 let findingTelemetryHoverIndex = null;
 
@@ -95,6 +100,8 @@ function wireEvents() {
     if (currentRace) renderRaceCharts(currentRace);
     if (currentPayload) renderCharts(currentPayload);
   });
+  els.positionChart.addEventListener("mousemove", updatePositionHover);
+  els.positionChart.addEventListener("mouseleave", clearPositionHover);
   els.trace.addEventListener("mousemove", updateTraceHover);
   els.trace.addEventListener("mouseleave", clearTraceHover);
   els.paceViolinChart.addEventListener("mousemove", updatePaceViolinHover);
@@ -103,6 +110,8 @@ function wireEvents() {
   els.paceTrendChart.addEventListener("mouseleave", clearPaceTrendHover);
   els.stintTimelineChart.addEventListener("mousemove", updateStintHover);
   els.stintTimelineChart.addEventListener("mouseleave", clearStintHover);
+  els.pitStopChart.addEventListener("mousemove", updatePitStopHover);
+  els.pitStopChart.addEventListener("mouseleave", clearPitStopHover);
   els.teamPaceChart.addEventListener("mousemove", updateTeamPaceHover);
   els.teamPaceChart.addEventListener("mouseleave", clearTeamPaceHover);
 }
@@ -520,6 +529,7 @@ function renderRaceCharts(race) {
   drawHorizontalRanking(els.sector3Chart, insights.fastestSectors?.sector3 || [], sectorChartOptions("time"));
   drawPaceTrend(insights.lapTimeTrend || [], insights.fuelPaceProxy || []);
   drawStintTimeline(insights.driverStints || [], race?.standings || [], race?.lapCount || 0);
+  drawPitStopViolin(insights.pitStops || []);
 }
 
 function sectorChartOptions(valueKey) {
@@ -744,6 +754,202 @@ function drawStintHover(ctx, box) {
   ctx.strokeStyle = "#17211e";
   ctx.lineWidth = 2;
   ctx.strokeRect(box.x1 - 1, box.y1 - 1, box.x2 - box.x1 + 2, box.y2 - box.y1 + 2);
+  ctx.restore();
+}
+
+function drawPitStopViolin(pitStops) {
+  const canvas = els.pitStopChart;
+  const ctx = fitCanvas(canvas);
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  drawBackground(ctx, w, h);
+  const teams = pitStopTeams(pitStops);
+  if (!teams.length) {
+    drawEmpty(ctx, "Pit stop timing unavailable for this race.");
+    return;
+  }
+
+  const allTimes = teams.flatMap((team) => team.stops.map((stop) => stop.pitLaneTime).filter(isFiniteNumber));
+  const minTime = Math.max(0, Math.min(...allTimes) - 1.0);
+  const maxTime = Math.max(...allTimes) + 1.0;
+  const pad = { left: 54, right: 18, top: 38, bottom: 74 };
+  const plotW = w - pad.left - pad.right;
+  const columnW = plotW / teams.length;
+  const hitboxes = [];
+
+  ctx.fillStyle = "#26312e";
+  ctx.font = "700 13px Inter, sans-serif";
+  ctx.fillText("Pit stop lane time by team", pad.left, 20);
+  ctx.strokeStyle = "#d8dfdc";
+  ctx.fillStyle = "#63706c";
+  ctx.font = "12px Inter, sans-serif";
+  ctx.strokeRect(pad.left, pad.top, plotW, h - pad.top - pad.bottom);
+
+  const step = Math.max(1, (maxTime - minTime) / 5);
+  for (let time = minTime; time <= maxTime + 0.001; time += step) {
+    const y = scale(time, minTime, maxTime, h - pad.bottom, pad.top);
+    ctx.fillStyle = "#63706c";
+    ctx.fillText(`${time.toFixed(1)}s`, 10, y + 4);
+    ctx.strokeStyle = "#edf1ef";
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(w - pad.right, y);
+    ctx.stroke();
+  }
+
+  teams.forEach((team, index) => {
+    const times = team.stops.map((stop) => stop.pitLaneTime).filter(isFiniteNumber).sort((a, b) => a - b);
+    const x = pad.left + columnW * index + columnW / 2;
+    const maxHalf = Math.max(5, columnW * 0.34);
+    const bins = densityBins(times, minTime, maxTime, 18);
+    const maxDensity = Math.max(...bins.map((bin) => bin.count), 1);
+
+    ctx.beginPath();
+    bins.forEach((bin, binIndex) => {
+      const y = scale(bin.center, minTime, maxTime, h - pad.bottom, pad.top);
+      const half = Math.max(2, (bin.count / maxDensity) * maxHalf);
+      if (binIndex === 0) ctx.moveTo(x - half, y);
+      else ctx.lineTo(x - half, y);
+    });
+    [...bins].reverse().forEach((bin) => {
+      const y = scale(bin.center, minTime, maxTime, h - pad.bottom, pad.top);
+      const half = Math.max(2, (bin.count / maxDensity) * maxHalf);
+      ctx.lineTo(x + half, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = "rgba(10, 124, 134, 0.18)";
+    ctx.fill();
+    ctx.strokeStyle = css("--ref");
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    team.stops.forEach((stop, stopIndex) => {
+      const jitter = ((stopIndex % 5) - 2) * Math.min(5, maxHalf / 5);
+      const y = scale(stop.pitLaneTime, minTime, maxTime, h - pad.bottom, pad.top);
+      ctx.fillStyle = css("--cmp");
+      ctx.beginPath();
+      ctx.arc(x + jitter, y, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    const avgY = scale(team.average, minTime, maxTime, h - pad.bottom, pad.top);
+    ctx.strokeStyle = css("--loss");
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - maxHalf, avgY);
+    ctx.lineTo(x + maxHalf, avgY);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(x - 4, h - 48);
+    ctx.rotate(-Math.PI / 4);
+    ctx.fillStyle = "#26312e";
+    ctx.fillText(team.team, 0, 0);
+    ctx.restore();
+
+    hitboxes.push({
+      team,
+      x1: pad.left + columnW * index,
+      x2: pad.left + columnW * (index + 1),
+      y1: pad.top,
+      y2: h - pad.bottom,
+      x,
+      avgY,
+      maxHalf,
+    });
+  });
+
+  canvas._pitStopPlot = { pitStops, teams, hitboxes };
+  if (pitStopHoverIndex !== null && hitboxes[pitStopHoverIndex]) {
+    drawPitStopHover(ctx, hitboxes[pitStopHoverIndex]);
+  }
+}
+
+function pitStopTeams(pitStops) {
+  const groups = new Map();
+  (pitStops || [])
+    .filter((stop) => stop.team && isFiniteNumber(stop.pitLaneTime))
+    .forEach((stop) => {
+      if (!groups.has(stop.team)) groups.set(stop.team, []);
+      groups.get(stop.team).push(stop);
+    });
+  return [...groups.entries()]
+    .map(([team, stops]) => {
+      const times = stops.map((stop) => stop.pitLaneTime).filter(isFiniteNumber).sort((a, b) => a - b);
+      return {
+        team,
+        stops: stops.sort((a, b) => (a.pitLaneTime || 999) - (b.pitLaneTime || 999)),
+        average: average(times),
+        median: median(times),
+        best: times[0],
+        worst: times[times.length - 1],
+      };
+    })
+    .sort((a, b) => a.average - b.average);
+}
+
+function updatePitStopHover(event) {
+  const plot = els.pitStopChart._pitStopPlot;
+  if (!plot?.hitboxes?.length) return;
+  const rect = els.pitStopChart.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  const index = plot.hitboxes.findIndex((box) => x >= box.x1 && x <= box.x2 && y >= box.y1 && y <= box.y2 + 44);
+  if (index === -1) {
+    pitStopHoverIndex = null;
+    els.pitStopTooltip.hidden = true;
+    drawPitStopViolin(plot.pitStops);
+    return;
+  }
+  pitStopHoverIndex = index;
+  drawPitStopViolin(plot.pitStops);
+  renderPitStopTooltip(event, plot.hitboxes[index].team);
+}
+
+function clearPitStopHover() {
+  pitStopHoverIndex = null;
+  els.pitStopTooltip.hidden = true;
+  const insights = currentRace?.raceInsights || {};
+  if (insights.pitStops) drawPitStopViolin(insights.pitStops);
+}
+
+function renderPitStopTooltip(event, team) {
+  const stopRows = team.stops.map((stop) => {
+    const tyre = [stop.compoundBefore, stop.compoundAfter].filter(Boolean).join(" → ") || "--";
+    return `<div><span>${escapeHtml(stop.driver)} L${stop.lap ?? "--"}</span><strong>${num(stop.pitLaneTime, 2)} s · ${escapeHtml(tyre)}</strong></div>`;
+  });
+  els.pitStopTooltip.innerHTML = `
+    <div><span>Team</span><strong>${escapeHtml(team.team)}</strong></div>
+    <div><span>Average</span><strong>${num(team.average, 2)} s</strong></div>
+    <div><span>Median</span><strong>${num(team.median, 2)} s</strong></div>
+    <div><span>Best / worst</span><strong>${num(team.best, 2)} s / ${num(team.worst, 2)} s</strong></div>
+    ${stopRows.join("")}`;
+
+  const panelRect = els.pitStopChart.closest(".chart-surface").getBoundingClientRect();
+  const tipWidth = 300;
+  const maxLeft = Math.max(10, panelRect.width - tipWidth - 10);
+  const maxTop = Math.max(10, panelRect.height - 300);
+  const left = Math.min(Math.max(10, event.clientX - panelRect.left + 14), maxLeft);
+  const top = Math.min(Math.max(10, event.clientY - panelRect.top + 14), maxTop);
+  els.pitStopTooltip.style.left = `${left}px`;
+  els.pitStopTooltip.style.top = `${top}px`;
+  els.pitStopTooltip.hidden = false;
+}
+
+function drawPitStopHover(ctx, box) {
+  ctx.save();
+  ctx.fillStyle = "rgba(10, 124, 134, 0.08)";
+  ctx.fillRect(box.x1 + 1, box.y1, box.x2 - box.x1 - 2, box.y2 - box.y1);
+  ctx.strokeStyle = "#17211e";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(box.x1 + 1, box.y1, box.x2 - box.x1 - 2, box.y2 - box.y1);
+  ctx.strokeStyle = css("--loss");
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(box.x - box.maxHalf, box.avgY);
+  ctx.lineTo(box.x + box.maxHalf, box.avgY);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -1340,6 +1546,7 @@ function drawPositionChart(race) {
   const maxPosition = Math.max(...allLaps.map((item) => item.position), ...history.map((driver) => driver.finalPosition || 0));
   const pad = { left: 54, right: 130, top: 24, bottom: 38 };
   const colors = ["#0a7c86", "#d23b3b", "#2f5fca", "#157f4f", "#966014", "#6f4bb3", "#c35b8d", "#2f7670", "#7f6b21", "#59636f"];
+  const driverColors = new Map(history.map((driver, index) => [driver.driver, colors[index % colors.length]]));
 
   ctx.strokeStyle = "#d8dfdc";
   ctx.fillStyle = "#63706c";
@@ -1394,6 +1601,117 @@ function drawPositionChart(race) {
     ctx.stroke();
     ctx.fillText(driver.driver, w - pad.right + 14, labelY + 4);
   });
+
+  canvas._positionPlot = { race, history, minLap: 1, maxLap, maxPosition, pad, driverColors };
+  if (positionHoverLap !== null) {
+    drawPositionHover(ctx, canvas._positionPlot, positionHoverLap);
+  }
+}
+
+function updatePositionHover(event) {
+  const plot = els.positionChart._positionPlot;
+  if (!plot?.history?.length) return;
+  const rect = els.positionChart.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  const insideX = x >= plot.pad.left && x <= rect.width - plot.pad.right;
+  const insideY = y >= plot.pad.top && y <= rect.height - plot.pad.bottom;
+  if (!insideX || !insideY) {
+    clearPositionHover();
+    return;
+  }
+  const lap = Math.max(plot.minLap, Math.min(plot.maxLap, Math.round(scale(x, plot.pad.left, rect.width - plot.pad.right, plot.minLap, plot.maxLap))));
+  positionHoverLap = lap;
+  drawPositionChart(plot.race);
+  renderPositionTooltip(event, els.positionChart._positionPlot, lap);
+}
+
+function clearPositionHover() {
+  positionHoverLap = null;
+  if (els.positionTooltip) els.positionTooltip.hidden = true;
+  if (currentRace) drawPositionChart(currentRace);
+}
+
+function renderPositionTooltip(event, plot, lap) {
+  if (!els.positionTooltip || !plot) return;
+  const positions = positionsAtLap(plot.history, lap);
+  if (!positions.length) {
+    els.positionTooltip.hidden = true;
+    return;
+  }
+  const rows = positions.slice(0, 12).map((item) => `<div>
+    <span>P${item.position}</span>
+    <strong>${escapeHtml(item.driver)}${item.team ? ` · ${escapeHtml(item.team)}` : ""}</strong>
+  </div>`);
+  const extra = positions.length > 12 ? `<div><span>More</span><strong>${positions.length - 12} drivers not shown</strong></div>` : "";
+  els.positionTooltip.innerHTML = `<div><span>Lap</span><strong>${lap}</strong></div>${rows.join("")}${extra}`;
+
+  const panelRect = els.positionChart.closest(".position-panel").getBoundingClientRect();
+  const tipWidth = 260;
+  const maxLeft = Math.max(10, panelRect.width - tipWidth - 10);
+  const maxTop = Math.max(10, panelRect.height - 360);
+  const left = Math.min(Math.max(10, event.clientX - panelRect.left + 14), maxLeft);
+  const top = Math.min(Math.max(62, event.clientY - panelRect.top + 14), maxTop);
+  els.positionTooltip.style.left = `${left}px`;
+  els.positionTooltip.style.top = `${top}px`;
+  els.positionTooltip.hidden = false;
+}
+
+function drawPositionHover(ctx, plot, lap) {
+  const { pad, maxLap, maxPosition, driverColors } = plot;
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const x = scale(lap, plot.minLap, maxLap, pad.left, w - pad.right);
+  const positions = positionsAtLap(plot.history, lap);
+  ctx.save();
+  ctx.strokeStyle = "#17211e";
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(x, pad.top);
+  ctx.lineTo(x, h - pad.bottom);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#17211e";
+  ctx.font = "700 12px Inter, sans-serif";
+  ctx.fillText(`Lap ${lap}`, Math.min(x + 6, w - pad.right - 44), pad.top + 16);
+
+  positions.forEach((item) => {
+    const y = scale(item.position, 1, maxPosition, pad.top + 8, h - pad.bottom - 8);
+    ctx.fillStyle = driverColors.get(item.driver) || css("--ref");
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+function positionsAtLap(history, lap) {
+  return history
+    .map((driver) => {
+      const entry = nearestLapPosition(driver.laps || [], lap);
+      if (!entry) return null;
+      return {
+        driver: driver.driver,
+        team: driver.team,
+        position: entry.position,
+        lap: entry.lap,
+      };
+    })
+    .filter(Boolean)
+    .filter((item) => isFiniteNumber(item.position))
+    .sort((a, b) => a.position - b.position || String(a.driver).localeCompare(String(b.driver)));
+}
+
+function nearestLapPosition(laps, lap) {
+  const exact = laps.find((item) => item.lap === lap && isFiniteNumber(item.position));
+  if (exact) return exact;
+  const candidates = laps.filter((item) => isFiniteNumber(item.lap) && isFiniteNumber(item.position) && item.lap <= lap);
+  if (!candidates.length) return null;
+  return candidates[candidates.length - 1];
 }
 
 function orderPositionHistory(history, standings) {
@@ -1853,6 +2171,18 @@ function signed(value, unit = "") {
 
 function num(value, digits = 1) {
   return isFiniteNumber(value) ? value.toFixed(digits) : "--";
+}
+
+function average(values) {
+  const clean = values.filter(isFiniteNumber);
+  return clean.length ? clean.reduce((sum, value) => sum + value, 0) / clean.length : null;
+}
+
+function median(values) {
+  const clean = values.filter(isFiniteNumber).sort((a, b) => a - b);
+  if (!clean.length) return null;
+  const middle = Math.floor(clean.length / 2);
+  return clean.length % 2 ? clean[middle] : (clean[middle - 1] + clean[middle]) / 2;
 }
 
 function roundValue(value) {

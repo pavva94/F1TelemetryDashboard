@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FastF1 Race Engineering Dashboard</title>
+    <meta
+      name="description"
+      content="A project showcase for the FastF1 Race Engineering Dashboard: lap comparison, driver analysis, strategy planning, and pit window intelligence."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="FastF1 Race Engineering Dashboard home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>FastF1 Race Engineering</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#lap-analysis">Lap Analysis</a>
+        <a href="#strategy">Strategy</a>
+        <a href="#pit-window">Pit Window</a>
+        <a href="#features">Features</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero section-band">
+        <div class="hero-copy">
+          <p class="eyebrow">FastF1-supported telemetry, race context, and engineering evidence</p>
+          <h1>FastF1 Race Engineering Dashboard</h1>
+          <p class="hero-text">
+            A no-login Formula 1 analysis dashboard that turns FastF1 timing, telemetry, tyre, weather, and race data into clear engineering decisions.
+            Compare laps, diagnose where time was won or lost, and inspect race strategy with pit stop and stint intelligence.
+          </p>
+          <div class="hero-actions" aria-label="Project highlights">
+            <a class="button primary" href="#lap-analysis">Explore lap comparison</a>
+            <a class="button secondary" href="#strategy">View strategy planner</a>
+          </div>
+        </div>
+
+        <div class="hero-visual" aria-label="Dashboard preview with live-data style metrics">
+          <div class="browser-frame">
+            <div class="browser-bar">
+              <span></span>
+              <span></span>
+              <span></span>
+              <strong>2024 Monza · Qualifying vs Race</strong>
+            </div>
+            <div class="dashboard-preview">
+              <div class="preview-head">
+                <div>
+                  <small>Lap Comparison</small>
+                  <h2>LEC reference vs SAI compared</h2>
+                </div>
+                <div class="delta-pill loss">+0.184s</div>
+              </div>
+              <div class="telemetry-chart" aria-hidden="true">
+                <span class="line ref"></span>
+                <span class="line cmp"></span>
+                <span class="line delta"></span>
+                <i style="left: 14%; height: 42%"></i>
+                <i style="left: 31%; height: 70%"></i>
+                <i style="left: 49%; height: 50%"></i>
+                <i style="left: 66%; height: 82%"></i>
+                <i style="left: 83%; height: 58%"></i>
+              </div>
+              <div class="preview-grid">
+                <div>
+                  <span>Sector 1</span>
+                  <strong class="gain">-0.042s</strong>
+                </div>
+                <div>
+                  <span>Sector 2</span>
+                  <strong class="loss">+0.156s</strong>
+                </div>
+                <div>
+                  <span>Sector 3</span>
+                  <strong class="loss">+0.070s</strong>
+                </div>
+              </div>
+              <div class="finding-list">
+                <div><b>High</b><span>Earlier braking into a medium-speed corner</span><em>+0.112s</em></div>
+                <div><b>Gain</b><span>Better exit speed onto DRS straight</span><em>-0.064s</em></div>
+                <div><b>Heuristic</b><span>Possible wider line from path deviation</span><em>medium</em></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-intro">
+        <div>
+          <p class="eyebrow">What this project is</p>
+          <h2>Race analysis that stays inside the evidence boundary.</h2>
+        </div>
+        <p>
+          The dashboard uses FastF1-supported data such as speed, RPM, gear, throttle, brake state, DRS, position, lap times, sector times, tyres, track status,
+          weather, stint information, and pit timing. It separates direct data, derived metrics, and heuristic interpretations so the user knows what is measured
+          and what is inferred.
+        </p>
+      </section>
+
+      <section class="feature-strip" id="features" aria-label="Core capabilities">
+        <article>
+          <span>01</span>
+          <h3>Race Overview</h3>
+          <p>Load a season and event to inspect standings, winner, fastest lap, lap count, position changes, pace distributions, and sector leaders.</p>
+        </article>
+        <article>
+          <span>02</span>
+          <h3>Lap Comparison</h3>
+          <p>Compare two drivers, two sessions, or a driver’s best comparable laps with aligned telemetry over distance.</p>
+        </article>
+        <article>
+          <span>03</span>
+          <h3>Strategy Mode</h3>
+          <p>Read tyre stints, pace trends, degradation signals, and pit stop timing as a race planning surface instead of disconnected charts.</p>
+        </article>
+        <article>
+          <span>04</span>
+          <h3>Evidence First</h3>
+          <p>Every major detection includes supporting data, confidence, severity, and clear labels for approximate or heuristic claims.</p>
+        </article>
+      </section>
+
+      <section class="section feature-focus" id="lap-analysis">
+        <div class="content-block">
+          <p class="eyebrow">Core workflow</p>
+          <h2>Lap comparison that explains the delta.</h2>
+          <p>
+            The lap analysis mode aligns telemetry by distance, then breaks the lap into meaningful sections. Instead of only showing that one lap was faster,
+            it ranks where the time changed and connects each gain or loss to braking, throttle, speed, gear, DRS, RPM, acceleration, and racing-line evidence.
+          </p>
+          <ul class="check-list">
+            <li>Total and sector delta calculations</li>
+            <li>Distance-aligned speed, throttle, brake, RPM, gear, DRS, and delta traces</li>
+            <li>Detection ranking for gains, losses, and heuristic findings</li>
+            <li>Track map markers and selected-finding detail</li>
+          </ul>
+        </div>
+
+        <div class="screenshot-card">
+          <div class="card-top">
+            <strong>Aligned Telemetry Over Distance</strong>
+            <span>Reference · Compared · Delta</span>
+          </div>
+          <div class="analysis-shot" aria-label="Screenshot style lap comparison panel">
+            <div class="trace-row speed"><span>Speed</span><i></i></div>
+            <div class="trace-row throttle"><span>Throttle</span><i></i></div>
+            <div class="trace-row brake"><span>Brake</span><i></i></div>
+            <div class="trace-row delta"><span>Delta</span><i></i></div>
+            <div class="mini-map" aria-hidden="true">
+              <span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section driver-analysis">
+        <div class="driver-panel">
+          <p class="eyebrow">Driver focus</p>
+          <h2>From stopwatch result to driver coaching cues.</h2>
+          <p>
+            The driver analysis view turns a lap into a performance fingerprint: straights, braking, low-speed corners, medium-speed corners, high-speed corners,
+            and DRS contribution. It helps identify whether the lap was defined by entry speed, exit speed, brake distance, full-throttle distance, or top-speed
+            differences.
+          </p>
+        </div>
+        <div class="fingerprint-panel" aria-label="Performance fingerprint preview">
+          <div class="fingerprint-row"><span>Straights</span><i><b style="width: 62%"></b></i><strong>-0.081s</strong></div>
+          <div class="fingerprint-row"><span>Braking</span><i><b class="loss" style="width: 74%"></b></i><strong>+0.126s</strong></div>
+          <div class="fingerprint-row"><span>Low-speed</span><i><b style="width: 38%"></b></i><strong>-0.032s</strong></div>
+          <div class="fingerprint-row"><span>Medium-speed</span><i><b class="loss" style="width: 70%"></b></i><strong>+0.118s</strong></div>
+          <div class="fingerprint-row"><span>High-speed</span><i><b style="width: 46%"></b></i><strong>-0.047s</strong></div>
+          <div class="fingerprint-row"><span>DRS</span><i><b style="width: 54%"></b></i><strong>-0.055s</strong></div>
+        </div>
+      </section>
+
+      <section class="section feature-focus reverse" id="strategy">
+        <div class="strategy-board" aria-label="Strategy planner preview">
+          <div class="card-top">
+            <strong>Plan Mode</strong>
+            <span>stints · pace · risk</span>
+          </div>
+          <div class="stint-row"><span>VER</span><i class="soft" style="width: 34%">MED 18L</i><i class="hard" style="width: 48%">HARD 31L</i></div>
+          <div class="stint-row"><span>LEC</span><i class="soft" style="width: 28%">MED 15L</i><i class="hard" style="width: 54%">HARD 34L</i></div>
+          <div class="stint-row"><span>NOR</span><i class="hard" style="width: 42%">HARD 23L</i><i class="soft" style="width: 37%">SOFT 21L</i></div>
+          <div class="planner-metrics">
+            <div><span>Best undercut</span><strong>Lap 18-21</strong></div>
+            <div><span>Tyre offset</span><strong>+6 laps</strong></div>
+            <div><span>Traffic risk</span><strong>Medium</strong></div>
+          </div>
+        </div>
+
+        <div class="content-block">
+          <p class="eyebrow">Plan mode</p>
+          <h2>Strategy planner for race-shaping decisions.</h2>
+          <p>
+            Plan mode groups the race into tyre and stint decisions. It gives the strategist a fast read on average pace, best lap, stint length, compound usage,
+            and fuel-proxy trends so alternate plans can be compared against the race that actually happened.
+          </p>
+          <ul class="check-list">
+            <li>Tyre stint timeline by driver</li>
+            <li>Average pace and best lap per stint</li>
+            <li>Race pace trend and fuel-proxy comparison</li>
+            <li>Readable strategy tables for post-race review</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section pit-window" id="pit-window">
+        <div>
+          <p class="eyebrow">Pit window intelligence</p>
+          <h2>Connect pit timing, tyre phase, and traffic context.</h2>
+          <p>
+            Pit stop intelligence summarizes pit-in and pit-out timing, lane time, compound changes, and stint transitions. It helps expose when a stop protected
+            track position, when an undercut window opened, and where pit loss changed the competitive order.
+          </p>
+        </div>
+        <div class="pit-table" aria-label="Pit window intelligence preview">
+          <div class="pit-head"><span>Driver</span><span>Window</span><span>Compound</span><span>Lane</span><span>Signal</span></div>
+          <div><span>LEC</span><span>L18-L21</span><span>MED → HARD</span><span>23.84s</span><b>Undercut open</b></div>
+          <div><span>SAI</span><span>L20-L23</span><span>MED → HARD</span><span>24.12s</span><b>Traffic safe</b></div>
+          <div><span>NOR</span><span>L26-L29</span><span>HARD → SOFT</span><span>23.51s</span><b>Offset attack</b></div>
+        </div>
+      </section>
+
+      <section class="section evidence">
+        <div>
+          <p class="eyebrow">Data discipline</p>
+          <h2>Clear about what the dashboard can and cannot claim.</h2>
+        </div>
+        <div class="evidence-grid">
+          <article>
+            <h3>Direct FastF1 channels</h3>
+            <p>Speed, RPM, gear, throttle, brake state, DRS, position, lap timing, sector timing, tyre compound, tyre life, weather, and session context.</p>
+          </article>
+          <article>
+            <h3>Derived metrics</h3>
+            <p>Delta time over distance, active brake and DRS distance, speed gain, section time deltas, path deviation, and approximate acceleration.</p>
+          </article>
+          <article>
+            <h3>Heuristic interpretations</h3>
+            <p>Possible missed apex, early lift, coasting, throttle hesitation, and line deviation are labelled as approximate when the raw data cannot prove intent.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>FastF1 Race Engineering Dashboard</span>
+      <span>Built as a static showcase for the project.</span>
+    </footer>
+  </body>
+</html>
