@@ -11,6 +11,13 @@ const els = {
   driverA: document.querySelector("#driver-a"),
   driverB: document.querySelector("#driver-b"),
   status: document.querySelector("#status"),
+  sessionRail: document.querySelector("#session-rail"),
+  overviewEyebrow: document.querySelector("#overview-eyebrow"),
+  winnerLabel: document.querySelector("#winner-label"),
+  sessionTimeLabel: document.querySelector("#session-time-label"),
+  standingsHeading: document.querySelector("#standings-heading"),
+  gridHeading: document.querySelector("#grid-heading"),
+  tyreHeading: document.querySelector("#tyre-heading"),
   raceTitle: document.querySelector("#race-title"),
   raceSummary: document.querySelector("#race-summary-text"),
   raceWinner: document.querySelector("#race-winner"),
@@ -57,6 +64,8 @@ let referenceDrivers = [];
 let comparedDrivers = [];
 let currentPayload = null;
 let currentRace = null;
+let activeSession = null;
+let weekendSessions = [];
 let currentFilter = "all";
 let positionHoverLap = null;
 let traceHoverIndex = null;
@@ -137,7 +146,7 @@ async function loadEvents() {
     fillSelect(els.event, data.events.map((event) => ({ value: event.name, label: `${event.round}. ${event.name}` })));
     els.event._events = data.events;
     handleEventChange();
-    setStatus("Race list loaded. Choose a race and load the summary.");
+    setStatus("Event list loaded. Choose an event and load its weekend sessions.");
   } catch (error) {
     setError(error);
   }
@@ -146,6 +155,8 @@ async function loadEvents() {
 function handleEventChange() {
   renderTrack();
   loadSessions();
+  currentRace = null;
+  renderSessionRail();
 }
 
 function renderTrack() {
@@ -159,11 +170,12 @@ function loadSessions() {
   const options = sessions.map((session) => ({ value: session.name, label: session.name }));
   fillSelect(els.sessionA, options);
   fillSelect(els.sessionB, options);
-  if ([...els.sessionA.options].some((option) => option.value === "Qualifying")) {
-    els.sessionA.value = "Qualifying";
-  }
-  if ([...els.sessionB.options].some((option) => option.value === "Race")) {
-    els.sessionB.value = "Race";
+  weekendSessions = sessions;
+  const race = sessions.find((item) => item.name === "Race")?.name || sessions[0]?.name;
+  if (race) {
+    els.sessionA.value = race;
+    els.sessionB.value = race;
+    activeSession = race;
   }
   clearComparisonControls();
 }
@@ -191,18 +203,53 @@ async function loadComparisonEntries() {
 
 async function loadRaceSummary() {
   if (!els.season.value || !els.event.value) return;
-  setStatus("Loading race summary, standings, and lap positions...");
+  const race = weekendSessions.find((item) => item.name === "Race")?.name || "Race";
+  await loadSessionSummary(race);
+}
+
+async function loadSessionSummary(sessionName) {
+  if (!sessionName || !els.season.value || !els.event.value) return;
+  activeSession = sessionName;
+  setStatus(`Loading ${sessionName} analysis...`);
   els.loadRace.disabled = true;
+  renderSessionRail();
   try {
-    const params = new URLSearchParams({ year: els.season.value, event: els.event.value });
-    currentRace = await api(`/api/race-summary?${params}`);
+    const params = new URLSearchParams({ year: els.season.value, event: els.event.value, session: sessionName });
+    currentRace = await api(`/api/session-summary?${params}`);
     renderRaceSummary(currentRace);
-    await loadComparisonEntries();
+    els.sessionA.value = sessionName;
+    els.sessionB.value = sessionName;
+    if (currentRace.status === "completed") {
+      await loadComparisonEntries();
+    } else {
+      clearComparisonControls();
+    }
+    setStatus(currentRace.status === "completed" ? `${sessionName} analysis loaded.` : `${sessionName}: ${currentRace.message || "no data available yet."}`);
   } catch (error) {
     setError(error);
   } finally {
     els.loadRace.disabled = false;
+    renderSessionRail();
   }
+}
+
+function renderSessionRail() {
+  if (!weekendSessions.length) {
+    els.sessionRail.innerHTML = '<p class="session-empty">Choose an event to view its scheduled sessions.</p>';
+    return;
+  }
+  els.sessionRail.innerHTML = weekendSessions.map((session) => {
+    const active = session.name === activeSession;
+    const status = active && currentRace?.session === session.name ? currentRace.status : sessionScheduleStatus(session);
+    const label = status === "completed" ? "Completed" : status === "no_data_yet" ? "No data yet" : status === "unavailable" ? "Unavailable" : "Scheduled";
+    return `<button class="session-option ${escapeHtml(status)} ${active ? "active" : ""}" type="button" data-session="${escapeHtml(session.name)}"><span class="session-name">${escapeHtml(session.name)}</span><small>${label}</small></button>`;
+  }).join("");
+  els.sessionRail.querySelectorAll("[data-session]").forEach((button) => button.addEventListener("click", () => loadSessionSummary(button.dataset.session)));
+}
+
+function sessionScheduleStatus(session) {
+  const date = session?.date ? new Date(session.date) : null;
+  return date && !Number.isNaN(date.valueOf()) && date.valueOf() < Date.now() ? "completed" : "no_data_yet";
 }
 
 function clearComparisonControls() {
@@ -260,6 +307,22 @@ function renderRaceSummary(race) {
   els.raceTime.textContent = race.raceTime || winner.status || "--";
   els.fastestLap.textContent = fastest.driver ? `${fastest.driver} L${fastest.lap} ${clock(fastest.time)}` : "--";
   els.raceLaps.textContent = race.lapCount || "--";
+  const sessionName = race.session || activeSession || "Session";
+  const completed = race.status === "completed";
+  els.overviewEyebrow.textContent = `${sessionName} Overview`;
+  els.raceTitle.textContent = `${race.year || ""} ${race.event || ""} · ${sessionName}`;
+  if (!completed) {
+    els.raceSummary.textContent = race.message || "This session has not been completed and no timing data is available yet.";
+  }
+  els.winnerLabel.textContent = ["race", "sprint"].includes(race.sessionType) ? "Winner" : "Fastest driver";
+  els.sessionTimeLabel.textContent = ["race", "sprint"].includes(race.sessionType) ? "Session time" : "Best lap";
+  els.standingsHeading.textContent = ["race", "sprint"].includes(race.sessionType) ? "Final Classification" : "Session Classification";
+  els.gridHeading.textContent = ["race", "sprint"].includes(race.sessionType) ? "Grid" : "—";
+  els.tyreHeading.textContent = ["race", "sprint"].includes(race.sessionType) ? "Tyres, Stints, And Pit Stops" : "Tyres And Run Analysis";
+  if (!winner.driver && fastest.driver) {
+    els.raceWinner.textContent = `${fastest.driver}${fastest.team ? ` · ${fastest.team}` : ""}`;
+  }
+  if (!race.raceTime && fastest.time) els.raceTime.textContent = clock(fastest.time);
   renderStandings(race.standings || []);
   renderRaceCharts(race);
   renderRaceInsightTables(race.raceInsights || {});

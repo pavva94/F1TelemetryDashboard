@@ -49,7 +49,7 @@ def list_events(year: int) -> list[dict[str, Any]]:
                 "country": _none_if_nan(_value(row, "Country")),
                 "location": _none_if_nan(_value(row, "Location")),
                 "date": _jsonable(_value(row, "EventDate")),
-                "sessions": _sessions_from_event_row(row),
+                "sessions": order_event_sessions(_sessions_from_event_row(row)),
             }
         )
     return events
@@ -81,8 +81,15 @@ def list_session_entries(year: int, event: str, session_name: str, cache_dir: st
     return {"drivers": drivers, "teams": teams}
 
 
-def race_summary(year: int, event: str, cache_dir: str | None = None) -> dict[str, Any]:
-    session = load_fastf1_session(year, event, "Race", cache_dir)
+def session_summary(year: int, event: str, session_name: str, cache_dir: str | None = None) -> dict[str, Any]:
+    """Build an overview for one session without mixing weekend data."""
+    try:
+        session = load_fastf1_session(year, event, session_name, cache_dir)
+    except Exception as exc:
+        # The schedule can legitimately expose a future session before timing exists.
+        status = "no_data_yet" if _looks_like_future_session_error(str(exc)) else "unavailable"
+        return _empty_session_summary(year, event, session_name, status, str(exc))
+
     laps = session.laps
     results = getattr(session, "results", None)
     standings = _race_standings(results, laps)
@@ -92,9 +99,14 @@ def race_summary(year: int, event: str, cache_dir: str | None = None) -> dict[st
     winner = standings[0] if standings else None
     event_info = getattr(session, "event", None)
 
+    has_data = (laps is not None and not laps.empty) or (results is not None and not results.empty)
     return {
         "year": year,
         "event": event,
+        "session": session_name,
+        "sessionType": session_kind(session_name),
+        "status": "completed" if has_data else "no_data_yet",
+        "message": None if has_data else "This session has not produced timing data yet.",
         "round": _jsonable(_value(event_info, "RoundNumber")) if event_info is not None else None,
         "country": _jsonable(_value(event_info, "Country")) if event_info is not None else None,
         "location": _jsonable(_value(event_info, "Location")) if event_info is not None else None,
@@ -108,6 +120,67 @@ def race_summary(year: int, event: str, cache_dir: str | None = None) -> dict[st
         "positionHistory": position_history,
         "raceInsights": race_insights,
     }
+
+
+def race_summary(year: int, event: str, cache_dir: str | None = None) -> dict[str, Any]:
+    """Backward-compatible alias for clients using the former race-only endpoint."""
+    return session_summary(year, event, "Race", cache_dir)
+
+
+def order_event_sessions(sessions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Put FastF1 schedule names into the dashboard's weekend reading order."""
+    indexed = list(enumerate(sessions))
+    return [session for _, session in sorted(indexed, key=lambda item: (_session_order(item[1].get("name", "")), item[0]))]
+
+
+def session_kind(name: str) -> str:
+    normalized = name.lower().strip()
+    if normalized in {"race", "grand prix"}:
+        return "race"
+    if "sprint" in normalized and ("qual" in normalized or "shootout" in normalized):
+        return "sprint_qualifying"
+    if normalized == "sprint" or normalized.startswith("sprint race"):
+        return "sprint"
+    if "qual" in normalized:
+        return "qualifying"
+    if "practice" in normalized or normalized.startswith("fp"):
+        return "practice"
+    return "other"
+
+
+def _session_order(name: str) -> int:
+    normalized = name.lower().strip().replace(" ", "")
+    kind = session_kind(name)
+    if kind == "race":
+        return 0
+    if kind == "qualifying":
+        return 1
+    if kind == "sprint":
+        return 2
+    if kind == "sprint_qualifying":
+        return 3
+    if normalized.endswith("3"):
+        return 4
+    if normalized.endswith("2"):
+        return 5
+    if kind == "practice":
+        return 6
+    return 7
+
+
+def _empty_session_summary(year: int, event: str, session_name: str, status: str, message: str | None = None) -> dict[str, Any]:
+    return {
+        "year": year, "event": event, "session": session_name, "sessionType": session_kind(session_name),
+        "status": status, "message": "This session is not completed or timing data is not available yet." if status == "no_data_yet" else message,
+        "round": None, "country": None, "location": None, "date": None, "winner": None, "raceTime": None,
+        "fastestLap": None, "lapCount": None, "classifiedDrivers": 0, "standings": [], "positionHistory": [],
+        "raceInsights": _empty_race_insights(),
+    }
+
+
+def _looks_like_future_session_error(message: str) -> bool:
+    normalized = message.lower()
+    return any(token in normalized for token in ("not started", "not yet", "not available yet", "no data", "not been scheduled"))
 
 
 def select_lap(session: Any, driver: str, lap_number: int | None = None, fastest: bool = False) -> LapData:

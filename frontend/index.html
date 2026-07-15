@@ -30,26 +30,33 @@
             <span>Track</span>
             <input id="track" type="text" readonly value="--" />
           </label>
-          <button id="load-race" class="primary" type="submit">Load race</button>
+          <button id="load-race" class="primary" type="submit">Load weekend</button>
         </form>
       </header>
 
       <section class="dashboard" aria-live="polite">
-        <div id="status" class="status">Select a season and race to load the race summary.</div>
+        <div id="status" class="status">Select a season and event to load its sessions.</div>
+
+        <div class="session-workspace">
+          <aside class="session-rail" aria-label="Weekend sessions">
+            <span class="eyebrow">Weekend sessions</span>
+            <div id="session-rail" class="session-rail-list"></div>
+          </aside>
+          <div class="session-content">
 
         <section class="race-hero">
           <div>
-            <span class="eyebrow">Race Overview</span>
-            <h2 id="race-title">No race loaded</h2>
-            <p id="race-summary-text">Choose a year and race above. The comparison tools will unlock after the race context is loaded.</p>
+            <span class="eyebrow" id="overview-eyebrow">Session Overview</span>
+            <h2 id="race-title">No session loaded</h2>
+            <p id="race-summary-text">Choose a year and event above. Select a completed session to inspect its data.</p>
           </div>
           <div class="metrics race-metrics">
             <div class="metric">
-              <span>Winner</span>
+              <span id="winner-label">Winner</span>
               <strong id="race-winner">--</strong>
             </div>
             <div class="metric">
-              <span>Race time</span>
+              <span id="session-time-label">Session time</span>
               <strong id="race-time">--</strong>
             </div>
             <div class="metric">
@@ -57,7 +64,7 @@
               <strong id="fastest-lap">--</strong>
             </div>
             <div class="metric">
-              <span>Laps</span>
+              <span>Timed laps</span>
               <strong id="race-laps">--</strong>
             </div>
           </div>
@@ -66,7 +73,7 @@
         <section class="race-grid">
           <div class="panel">
             <div class="panel-head">
-              <h3>Final Standings</h3>
+              <h3 id="standings-heading">Classification</h3>
             </div>
             <div class="standings-wrap">
               <table class="standings-table">
@@ -75,7 +82,7 @@
                     <th>Pos</th>
                     <th>Driver</th>
                     <th>Team</th>
-                    <th>Grid</th>
+                    <th id="grid-heading">Grid</th>
                     <th>Time / Status</th>
                     <th>Pts</th>
                   </tr>
@@ -107,7 +114,7 @@
 
           <div class="panel">
             <div class="panel-head">
-              <h3>Team Race Pace</h3>
+              <h3>Team Pace</h3>
             </div>
             <div class="chart-surface">
               <canvas id="team-pace-chart" width="720" height="440"></canvas>
@@ -140,7 +147,7 @@
         <section class="race-detail-grid">
           <div class="panel">
             <div class="panel-head">
-              <h3>Race Pace And Fuel Proxy</h3>
+              <h3>Session Pace Trend</h3>
             </div>
             <div class="chart-surface">
               <canvas id="pace-trend-chart" width="760" height="440"></canvas>
@@ -150,7 +157,7 @@
 
           <div class="panel">
             <div class="panel-head">
-              <h3>Tyres, Stints, And Pit Stops</h3>
+              <h3 id="tyre-heading">Tyres, Stints, And Pit Stops</h3>
             </div>
             <div class="chart-surface">
               <canvas id="stint-timeline-chart" width="760" height="440"></canvas>
@@ -170,7 +177,7 @@
               <span class="eyebrow">Lap Comparison</span>
               <h2>Telemetry Detail</h2>
             </div>
-            <p>Choose one session and driver for each side; for example, compare a qualifying best lap against a race best lap.</p>
+            <p>Compare best laps from the active session or choose two different sessions.</p>
           </div>
 
           <form id="comparison-form" class="comparison-controls">
@@ -321,6 +328,8 @@
               </div>
             </div>
           </section>
+          </div>
+        </div>
         </section>
       </section>
     </main>

@@ -5,7 +5,7 @@ import pandas as pd
 
 from fastf1_lapdiff import LapData, LapMetadata, align_laps, analyze_laps
 from fastf1_lapdiff.dashboard import build_dashboard_payload
-from fastf1_lapdiff.fastf1_loader import _race_insights
+from fastf1_lapdiff.fastf1_loader import _race_insights, order_event_sessions, session_summary
 
 
 def _lap(delay_exit: bool = False, drs: int = 1, lap_time: float = 90.0) -> pd.DataFrame:
@@ -176,3 +176,26 @@ def test_race_insights_summarize_pace_sectors_tyres_and_pits() -> None:
     assert insights["pitStops"][0]["driver"] == "VER"
     assert insights["pitStops"][0]["pitLaneTime"] == 24.0
     assert insights["notes"]
+
+
+def test_session_order_supports_standard_sprint_and_legacy_names() -> None:
+    standard = [{"name": name} for name in ["Practice 2", "Race", "Practice 1", "Qualifying", "Practice 3"]]
+    assert [item["name"] for item in order_event_sessions(standard)] == ["Race", "Qualifying", "Practice 3", "Practice 2", "Practice 1"]
+
+    sprint = [{"name": name} for name in ["Sprint Shootout", "Practice 1", "Sprint", "Qualifying", "Race"]]
+    assert [item["name"] for item in order_event_sessions(sprint)] == ["Race", "Qualifying", "Sprint", "Sprint Shootout", "Practice 1"]
+
+
+def test_session_summary_marks_empty_loaded_session_as_no_data(monkeypatch) -> None:
+    class EmptySession:
+        laps = pd.DataFrame()
+        results = pd.DataFrame()
+        event = None
+
+    monkeypatch.setattr("fastf1_lapdiff.fastf1_loader.load_fastf1_session", lambda *args: EmptySession())
+    summary = session_summary(2026, "Example Grand Prix", "Race")
+
+    assert summary["status"] == "no_data_yet"
+    assert summary["session"] == "Race"
+    assert summary["standings"] == []
+    assert summary["raceInsights"]["driverPace"] == []

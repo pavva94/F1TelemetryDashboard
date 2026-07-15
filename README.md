@@ -68,7 +68,8 @@ Useful deployment notes:
 
 - Set `FASTF1_CACHE_DIR` to a persistent writable directory so FastF1 data is cached across requests.
 - Set `PORT` if your host provides a dynamic port.
-- The backend routes are `/api/seasons`, `/api/events`, `/api/session-entries`, and `/api/compare-best-laps`.
+- The backend routes are `/api/seasons`, `/api/events`, `/api/session-summary`, `/api/session-entries`, and `/api/compare-best-laps`.
+- The event view includes every scheduled weekend session in race-first order. Sessions without timing data remain selectable and report `no_data_yet` rather than failing the dashboard.
 - The frontend lives in `frontend/` and is served by FastAPI from the same origin, so it can be placed behind a normal website reverse proxy.
 
 Docker:

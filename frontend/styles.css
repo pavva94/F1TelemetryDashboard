@@ -148,6 +148,63 @@ input {
   align-content: start;
 }
 
+.session-workspace {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.session-content {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.session-rail {
+  position: sticky;
+  top: 104px;
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.session-rail-list {
+  display: grid;
+  gap: 7px;
+}
+
+.session-option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid #aeb8b4;
+  border-radius: 5px;
+  background: #fbfcfb;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.session-option.active { border-left-color: var(--cmp); background: #fff5f4; }
+.session-option.completed { border-left-color: var(--gain); }
+.session-option small { color: var(--muted); font-size: 11px; }
+.session-option .session-name { font-weight: 750; font-size: 13px; overflow-wrap: anywhere; }
+
+.session-empty {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .status {
   min-height: 38px;
   padding: 10px 12px;
@@ -1019,6 +1076,7 @@ canvas {
 
 @media (max-width: 1180px) {
   .topbar,
+  .session-workspace,
   .race-search,
   .comparison-controls,
   .race-grid,
@@ -1036,6 +1094,8 @@ canvas {
   .topbar {
     position: static;
   }
+
+  .session-rail { position: static; }
 }
 
 @media (max-width: 720px) {

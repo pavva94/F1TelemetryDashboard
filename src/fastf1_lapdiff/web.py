@@ -11,6 +11,7 @@ from .fastf1_loader import (
     list_session_entries,
     load_fastf1_session,
     race_summary,
+    session_summary,
     select_best_comparison_laps,
     select_best_lap_from_session,
     weather_context_for_lap,
@@ -63,6 +64,14 @@ def create_app() -> Any:
     def race_summary_route(year: int, event: str) -> JSONResponse:
         try:
             data = race_summary(year, event, DEFAULT_CACHE_DIR)
+            return JSONResponse(jsonable_encoder(data))
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    @app.get("/api/session-summary")
+    def session_summary_route(year: int, event: str, session: str) -> JSONResponse:
+        try:
+            data = session_summary(year, event, session, DEFAULT_CACHE_DIR)
             return JSONResponse(jsonable_encoder(data))
         except Exception as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
