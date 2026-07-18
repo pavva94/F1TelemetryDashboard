@@ -2159,7 +2159,8 @@ function sliceTelemetry(t, indices) {
 }
 
 async function api(path) {
-  const response = await fetch(path);
+  const apiBase = String(window.FASTF1_API_BASE || "").replace(/\/$/, "");
+  const response = await fetch(`${apiBase}${path}`);
   if (!response.ok) {
     let detail = response.statusText;
     try {

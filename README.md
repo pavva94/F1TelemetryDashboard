@@ -79,6 +79,36 @@ docker build -t fastf1-lapdiff .
 docker run -p 8000:8000 -e FASTF1_CACHE_DIR=/app/.fastf1-cache fastf1-lapdiff
 ```
 
+## Deploy on Render
+
+The repository includes a Render Blueprint in `render.yaml`. The default deployment serves both the dashboard and API from one Docker web service, which avoids cross-origin configuration.
+
+1. Push the repository to a Git provider supported by Render.
+2. In Render, choose **New > Blueprint** and select the repository.
+3. Review the `fastf1-lapdiff` free web service and deploy it.
+4. Verify `https://<service-name>.onrender.com/api/health` returns `{"status":"ok"}`.
+
+Render provides `PORT` automatically. The Blueprint stores FastF1's runtime cache under `/tmp`; on a free service this cache is ephemeral and is lost when the instance restarts or spins down.
+
+### Use a separately hosted frontend
+
+The bundled frontend uses same-origin API routes by default. When it is deployed on another host, define the backend URL before loading `app.js`:
+
+```html
+<script>
+  window.FASTF1_API_BASE = "https://<service-name>.onrender.com";
+</script>
+<script src="app.js"></script>
+```
+
+Also add an environment variable to the Render service containing the exact frontend origin (multiple origins are comma-separated):
+
+```text
+FASTF1_ALLOWED_ORIGINS=https://your-frontend.example
+```
+
+Origins should include the scheme and hostname but no path. Leave this variable unset when Render serves the included frontend.
+
 ## MVP Capabilities
 
 - Distance-based telemetry alignment

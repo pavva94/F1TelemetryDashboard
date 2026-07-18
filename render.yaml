@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: fastf1-lapdiff
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: FASTF1_CACHE_DIR
+        value: /tmp/.fastf1-cache
