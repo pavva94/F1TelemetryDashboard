@@ -7,3 +7,5 @@ services:
     envVars:
       - key: FASTF1_CACHE_DIR
         value: /tmp/.fastf1-cache
+      - key: FASTF1_ALLOWED_ORIGINS
+        value: "*"

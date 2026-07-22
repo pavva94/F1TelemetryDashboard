@@ -107,7 +107,7 @@ Also add an environment variable to the Render service containing the exact fron
 FASTF1_ALLOWED_ORIGINS=https://your-frontend.example
 ```
 
-Origins should include the scheme and hostname but no path. Leave this variable unset when Render serves the included frontend.
+Origins should include the scheme and hostname but no path. Because this dashboard exposes only a public, read-only API, the included Render Blueprint uses `*` so static deployments can connect without extra configuration. Replace it with exact origins if the API later gains authenticated or mutating routes. Leave this variable unset when Render serves the included frontend.
 
 ## MVP Capabilities
 

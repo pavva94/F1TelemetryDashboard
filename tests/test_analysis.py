@@ -9,7 +9,7 @@ import pandas as pd
 from fastf1_lapdiff import LapData, LapMetadata, align_laps, analyze_laps
 from fastf1_lapdiff.dashboard import build_dashboard_payload
 from fastf1_lapdiff.fastf1_loader import _race_insights, order_event_sessions, session_summary
-from fastf1_lapdiff.web import _allowed_origins
+from fastf1_lapdiff.web import _allowed_origins, create_app
 
 
 def _lap(delay_exit: bool = False, drs: int = 1, lap_time: float = 90.0) -> pd.DataFrame:
@@ -218,3 +218,12 @@ def test_allowed_origins_parses_split_frontend_hosts() -> None:
             os.environ.pop("FASTF1_ALLOWED_ORIGINS", None)
         else:
             os.environ["FASTF1_ALLOWED_ORIGINS"] = previous
+
+
+def test_public_api_allows_split_frontend_origins() -> None:
+    with patch.dict(os.environ, {"FASTF1_ALLOWED_ORIGINS": "*"}):
+        app = create_app()
+
+    cors = next(middleware for middleware in app.user_middleware if middleware.cls.__name__ == "CORSMiddleware")
+    assert cors.kwargs["allow_origins"] == ["*"]
+    assert cors.kwargs["allow_methods"] == ["GET"]
