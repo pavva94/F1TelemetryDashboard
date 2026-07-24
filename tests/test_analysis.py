@@ -8,7 +8,7 @@ import pandas as pd
 
 from fastf1_lapdiff import LapData, LapMetadata, align_laps, analyze_laps
 from fastf1_lapdiff.dashboard import build_dashboard_payload
-from fastf1_lapdiff.fastf1_loader import _race_insights, order_event_sessions, session_summary
+from fastf1_lapdiff.fastf1_loader import _race_insights, _session_entries_from_laps, order_event_sessions, session_summary
 from fastf1_lapdiff.web import _allowed_origins, create_app
 
 
@@ -203,6 +203,21 @@ def test_session_summary_marks_empty_loaded_session_as_no_data() -> None:
     assert summary["session"] == "Race"
     assert summary["standings"] == []
     assert summary["raceInsights"]["driverPace"] == []
+    assert summary["drivers"] == []
+
+
+def test_session_summary_entries_can_reuse_loaded_laps() -> None:
+    laps = pd.DataFrame(
+        [
+            {"Driver": "VER", "Team": "Red Bull Racing", "LapNumber": 10, "LapTime": pd.to_timedelta(90.0, unit="s"), "IsAccurate": True},
+            {"Driver": "LEC", "Team": "Ferrari", "LapNumber": 11, "LapTime": pd.to_timedelta(90.2, unit="s"), "IsAccurate": True},
+        ]
+    )
+
+    entries = _session_entries_from_laps(laps)
+
+    assert [driver["code"] for driver in entries["drivers"]] == ["LEC", "VER"]
+    assert entries["teams"] == ["Ferrari", "Red Bull Racing"]
 
 
 def test_allowed_origins_parses_split_frontend_hosts() -> None:
