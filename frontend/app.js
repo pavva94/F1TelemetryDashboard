@@ -76,7 +76,7 @@ let pitStopHoverIndex = null;
 let teamPaceHoverIndex = null;
 let findingTelemetryHoverIndex = null;
 
-if (window.location.pathname.replace(/\/+$/, "") !== "/season") {
+if (window.FastF1Routing.route() !== "season") {
   init();
 }
 
@@ -246,7 +246,7 @@ async function loadSessionSummary(sessionName) {
   routeState.set("year", els.season.value);
   routeState.set("event", els.event.value);
   routeState.set("session", sessionName);
-  history.replaceState({ route: "race" }, "", `/race?${routeState}`);
+  history.replaceState({ route: "race" }, "", window.FastF1Routing.url("race", routeState));
   setStatus(`Loading ${sessionName} analysis...`);
   els.loadRace.disabled = true;
   renderSessionRail();

@@ -24,7 +24,7 @@
     createSeasonChartTooltip();
     wireRouting();
     wireFilters();
-    if (location.pathname.replace(/\/+$/, "") === "/season") {
+    if (window.FastF1Routing.route() === "season") {
       await loadSeasonOptions();
     }
     applyRoute();
@@ -35,12 +35,12 @@
       event.preventDefault();
       const route = link.dataset.route;
       if (route === "race") {
-        window.location.assign(savedRaceUrl());
+        window.location.assign(window.FastF1Routing.rebase(sessionStorage.getItem("fastf1-race-url"), "race"));
         return;
       }
       if (state.route === "race") {
-        sessionStorage.setItem("fastf1-race-url", `${location.pathname}${location.search}`);
-        window.location.assign(sessionStorage.getItem("fastf1-season-url") || "/season");
+        sessionStorage.setItem("fastf1-race-url", window.FastF1Routing.url("race", new URLSearchParams(location.search)));
+        window.location.assign(window.FastF1Routing.rebase(sessionStorage.getItem("fastf1-season-url"), "season"));
         return;
       }
       history.pushState({ route }, "", seasonUrl());
@@ -50,7 +50,7 @@
   }
 
   function applyRoute() {
-    const route = location.pathname.replace(/^\/+|\/+$/g, "") === "season" ? "season" : "race";
+    const route = window.FastF1Routing.route();
     state.route = route;
     document.body.dataset.route = route;
     elements.racePage.hidden = route !== "race";
@@ -751,14 +751,13 @@
     const teams = selectedValues(elements.teams), drivers = selectedValues(elements.drivers);
     if (teams.length) params.set("teams", teams.join("|"));
     if (drivers.length) params.set("drivers", drivers.join("|"));
-    return `/season?${params}`;
+    return window.FastF1Routing.url("season", params);
   }
 
-  function savedRaceUrl() { return sessionStorage.getItem("fastf1-race-url") || "/race"; }
   function raceUrl(event, driver = null, team = null) {
     const params = new URLSearchParams({ year: elements.year.value, event: event?.name || "", session: "Race" });
     if (driver) params.set("driver", driver); if (team) params.set("team", team);
-    return `/race?${params}`;
+    return window.FastF1Routing.url("race", params);
   }
 
   function restoreControls(query) {
