@@ -76,7 +76,9 @@ let pitStopHoverIndex = null;
 let teamPaceHoverIndex = null;
 let findingTelemetryHoverIndex = null;
 
-init();
+if (window.location.pathname.replace(/\/+$/, "") !== "/season") {
+  init();
+}
 
 async function init() {
   wireEvents();
@@ -130,6 +132,10 @@ async function loadSeasons() {
   try {
     const data = await api("/api/seasons");
     fillSelect(els.season, data.seasons.map((year) => ({ value: year, label: year })));
+    const routeState = new URLSearchParams(window.location.search);
+    if (routeState.get("year") && [...els.season.options].some((option) => option.value === routeState.get("year"))) {
+      els.season.value = routeState.get("year");
+    }
     await loadEvents();
   } catch (error) {
     setError(error);
@@ -145,8 +151,17 @@ async function loadEvents() {
     const data = await api(`/api/events?year=${encodeURIComponent(els.season.value)}`);
     fillSelect(els.event, data.events.map((event) => ({ value: event.name, label: `${event.round}. ${event.name}` })));
     els.event._events = data.events;
+    const routeState = new URLSearchParams(window.location.search);
+    const requestedEvent = routeState.get("event");
+    if (requestedEvent && [...els.event.options].some((option) => option.value === requestedEvent)) {
+      els.event.value = requestedEvent;
+    }
     handleEventChange();
-    setStatus("Event list loaded. Choose an event and load its weekend sessions.");
+    if (requestedEvent) {
+      await loadSessionSummary(routeState.get("session") || "Race");
+    } else {
+      setStatus("Event list loaded. Choose an event and load its weekend sessions.");
+    }
   } catch (error) {
     setError(error);
   }
@@ -206,7 +221,16 @@ function useLoadedSessionEntries(summary) {
   comparedDrivers = summary.drivers || [];
   const teams = summary.teams || [...new Set(referenceDrivers.map((driver) => driver.team).filter(Boolean))].sort();
   fillSelect(els.team, [{ value: "all", label: "All teams" }, ...teams.map((team) => ({ value: team, label: team }))]);
+  const routeState = new URLSearchParams(window.location.search);
+  const requestedTeam = routeState.get("team");
+  if (requestedTeam && [...els.team.options].some((option) => option.value === requestedTeam)) {
+    els.team.value = requestedTeam;
+  }
   renderDrivers();
+  const requestedDriver = routeState.get("driver");
+  if (requestedDriver && [...els.driverA.options].some((option) => option.value === requestedDriver)) {
+    els.driverA.value = requestedDriver;
+  }
 }
 
 async function loadRaceSummary() {
@@ -218,6 +242,11 @@ async function loadRaceSummary() {
 async function loadSessionSummary(sessionName) {
   if (!sessionName || !els.season.value || !els.event.value) return;
   activeSession = sessionName;
+  const routeState = new URLSearchParams(window.location.search);
+  routeState.set("year", els.season.value);
+  routeState.set("event", els.event.value);
+  routeState.set("session", sessionName);
+  history.replaceState({ route: "race" }, "", `/race?${routeState}`);
   setStatus(`Loading ${sessionName} analysis...`);
   els.loadRace.disabled = true;
   renderSessionRail();

@@ -68,13 +68,14 @@ def _session_entries_from_laps(laps: pd.DataFrame | None) -> dict[str, Any]:
     for driver, group in laps.groupby("Driver"):
         team = _none_if_nan(group["Team"].dropna().iloc[0]) if "Team" in group.columns and not group["Team"].dropna().empty else None
         clean = _clean_laps(group)
-        fastest = clean.sort_values("LapTime").iloc[0] if not clean.empty else group.dropna(subset=["LapTime"]).sort_values("LapTime").iloc[0]
+        timed = group.dropna(subset=["LapTime"]).sort_values("LapTime")
+        fastest = clean.sort_values("LapTime").iloc[0] if not clean.empty else timed.iloc[0] if not timed.empty else None
         drivers.append(
             {
                 "code": str(driver),
                 "team": team,
-                "fastestLap": int(_value(fastest, "LapNumber", 0) or 0),
-                "fastestLapTime": _seconds(_value(fastest, "LapTime")),
+                "fastestLap": _int_or_none(_value(fastest, "LapNumber")) if fastest is not None else None,
+                "fastestLapTime": _seconds(_value(fastest, "LapTime")) if fastest is not None else None,
                 "cleanLapCount": int(len(clean)),
                 "totalLapCount": int(len(group)),
             }

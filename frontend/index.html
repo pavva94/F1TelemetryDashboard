@@ -17,6 +17,11 @@
           </div>
         </div>
 
+        <nav class="mode-navigation" aria-label="Primary analysis">
+          <a href="/race" data-route="race" aria-current="page">Race Analysis</a>
+          <a href="/season" data-route="season">Season Analysis</a>
+        </nav>
+
         <form id="race-form" class="race-search">
           <label>
             <span>Season</span>
@@ -34,7 +39,7 @@
         </form>
       </header>
 
-      <section class="dashboard" aria-live="polite">
+      <section id="race-page" class="dashboard analysis-page" aria-live="polite">
         <div id="status" class="status">Select a season and event to load its sessions.</div>
 
         <div class="session-workspace">
@@ -332,7 +337,113 @@
         </div>
         </section>
       </section>
+
+      <section id="season-page" class="season-page analysis-page" aria-live="polite" hidden>
+        <header class="season-heading">
+          <div>
+            <span class="eyebrow">Season Analysis</span>
+            <h2>Competitive evolution, explained</h2>
+            <p>Championship, pace, development, reliability, tyres and predictive form across every completed round.</p>
+          </div>
+          <div id="season-freshness" class="data-freshness">Choose a season to build the analysis.</div>
+        </header>
+
+        <form id="season-filters" class="season-filters">
+          <label><span>Season</span><select id="season-year"></select></label>
+          <label><span>Start round</span><select id="season-start-round"></select></label>
+          <label><span>End round</span><select id="season-end-round"></select></label>
+          <label><span>Quick range</span>
+            <select id="season-quick-range">
+              <option value="custom">Custom range</option>
+              <option value="full" selected>Full available season</option>
+              <option value="last3">Last 3 rounds</option>
+              <option value="last5">Last 5 rounds</option>
+              <option value="firstHalf">First half</option>
+              <option value="secondHalf">Second half</option>
+              <option value="beforeBreak">Before summer break</option>
+              <option value="afterBreak">After summer break</option>
+            </select>
+          </label>
+          <label><span>Session</span>
+            <select id="season-session">
+              <option value="combined">Combined</option>
+              <option value="qualifying">Qualifying</option>
+              <option value="race">Race</option>
+              <option value="sprint">Sprint</option>
+            </select>
+          </label>
+          <label><span>Conditions</span>
+            <select id="season-conditions">
+              <option value="all">All conditions</option>
+              <option value="dry">Dry only</option>
+              <option value="wet">Wet only</option>
+            </select>
+          </label>
+          <label><span>Values</span>
+            <select id="season-value-kind">
+              <option value="observed">Observed values</option>
+              <option value="adjusted">Adjusted values</option>
+            </select>
+          </label>
+          <label><span>Reference</span>
+            <select id="season-reference">
+              <option value="fastest">Relative to fastest</option>
+              <option value="average">Relative to season average</option>
+              <option value="absolute">Absolute values</option>
+            </select>
+          </label>
+          <label><span>Analysis level</span>
+            <select id="season-level">
+              <option value="team">Team level</option>
+              <option value="driver">Driver level</option>
+            </select>
+          </label>
+          <label><span>Rolling window</span>
+            <select id="season-rolling">
+              <option value="1">No rolling average</option>
+              <option value="3">3 rounds</option>
+              <option value="5">5 rounds</option>
+            </select>
+          </label>
+          <label class="wide-control"><span>Teams</span><select id="season-teams" multiple aria-label="Teams; leave empty for all"></select></label>
+          <label class="wide-control"><span>Drivers</span><select id="season-drivers" multiple aria-label="Drivers; leave empty for all"></select></label>
+          <label class="check-control"><input id="season-sprints" type="checkbox" checked><span>Include sprint points</span></label>
+          <label class="check-control"><input id="season-classified" type="checkbox" checked><span>Include non-classified</span></label>
+          <button class="primary" type="submit">Apply filters</button>
+          <button id="season-reset" class="secondary" type="button">Reset</button>
+        </form>
+
+        <div id="season-status" class="status">Season analysis has not been loaded.</div>
+        <div id="season-progress" class="season-progress" hidden><i></i><span>Loading completed events and normalizing timing data…</span></div>
+
+        <nav class="season-section-nav" aria-label="Season analysis sections">
+          <a href="#overview">Overview</a><a href="#championship">Championship</a><a href="#performance">Performance</a>
+          <a href="#development">Development</a><a href="#teams">Teams</a><a href="#drivers">Drivers</a>
+          <a href="#reliability">Reliability</a><a href="#tyres">Tyres</a><a href="#history">Race History</a>
+          <a href="#predictions">Predictions</a>
+        </nav>
+
+        <div id="season-content" class="season-content" hidden>
+          <section id="overview" class="season-section"><div class="section-title"><div><span class="eyebrow">Season status</span><h2>Overview</h2></div><button class="export-button" data-export="overview">Export CSV</button></div><div id="season-summary-cards" class="season-card-grid"></div><div id="season-insights" class="insight-grid"></div></section>
+          <section id="championship" class="season-section"><div class="section-title"><div><span class="eyebrow">Points and position</span><h2>Championship evolution</h2></div><button class="export-button" data-export="championship">Export CSV</button></div><div class="season-chart-grid"><article class="panel"><div class="panel-head"><h3>Cumulative points</h3></div><canvas id="championship-chart" width="1000" height="460" aria-label="Cumulative championship points by round"></canvas></article><article class="panel"><div class="panel-head"><h3>Championship position</h3></div><canvas id="bump-chart" width="1000" height="460" aria-label="Championship rank by round"></canvas></article></div><article class="panel"><div class="panel-head"><h3>Points per event</h3></div><div id="points-heatmap" class="season-heatmap table-scroll"></div></article><div id="championship-table" class="table-scroll"></div></section>
+          <section id="performance" class="season-section"><div class="section-title"><div><span class="eyebrow">Lower is better</span><h2>Competitive performance</h2></div><button class="export-button" data-export="performance">Export CSV</button></div><div class="season-chart-grid"><article class="panel"><div class="panel-head"><h3>Qualifying deficit</h3></div><canvas id="qualifying-chart" width="1000" height="460" aria-label="Qualifying percentage deficit trend"></canvas></article><article class="panel"><div class="panel-head"><h3>Race-pace deficit</h3></div><canvas id="race-pace-chart" width="1000" height="460" aria-label="Race pace percentage deficit trend"></canvas></article><article class="panel"><div class="panel-head"><h3>Qualifying versus race pace</h3></div><canvas id="pace-scatter" width="1000" height="460" aria-label="Qualifying versus race pace scatter"></canvas></article><article class="panel"><div class="panel-head"><h3>Pace rank → finish rank</h3></div><div id="rank-comparison" class="table-scroll"></div></article></div></section>
+          <section id="development" class="season-section"><div class="section-title"><div><span class="eyebrow">Relative, circuit-normalized pace</span><h2>Car development and change points</h2></div><button class="export-button" data-export="development">Export CSV</button></div><div id="development-table" class="table-scroll"></div><div id="change-points" class="insight-grid"></div><article class="panel"><div class="panel-head"><h3>Upgrade associations</h3></div><div id="upgrade-analysis"></div></article></section>
+          <section id="teams" class="season-section"><div class="section-title"><div><span class="eyebrow">Head to head</span><h2>Team comparison and track suitability</h2></div><button class="export-button" data-export="teams">Export CSV</button></div><div id="team-summary" class="analysis-note"></div><div class="season-chart-grid"><article class="panel"><div class="panel-head"><h3>Circuit-type strength</h3></div><div id="track-heatmap" class="table-scroll"></div></article><article class="panel"><div class="panel-head"><h3>Performance-to-points conversion</h3></div><canvas id="conversion-chart" width="1000" height="460" aria-label="Expected versus actual points"></canvas></article></div><div id="team-table" class="table-scroll"></div></section>
+          <section id="drivers" class="season-section"><div class="section-title"><div><span class="eyebrow">Teammate evidence</span><h2>Driver comparison and consistency</h2></div><button class="export-button" data-export="drivers">Export CSV</button></div><div id="driver-table" class="table-scroll"></div></section>
+          <section id="reliability" class="season-section"><div class="section-title"><div><span class="eyebrow">Results and operations</span><h2>Reliability, pit stops and points lost</h2></div><button class="export-button" data-export="reliability">Export CSV</button></div><div id="reliability-table" class="table-scroll"></div><div id="reliability-timeline" class="season-heatmap table-scroll"></div><div id="pitstop-table" class="table-scroll"></div></section>
+          <section id="tyres" class="season-section"><div class="section-title"><div><span class="eyebrow">Adjusted estimates</span><h2>Tyres and stint analysis</h2></div><button class="export-button" data-export="tyres">Export CSV</button></div><div id="degradation-table" class="table-scroll"></div><div id="strategy-heatmap" class="season-heatmap table-scroll"></div></section>
+          <section id="history" class="season-section"><div class="section-title"><div><span class="eyebrow">Every completed round</span><h2>Race-history explorer</h2></div><button class="export-button" data-export="history">Export CSV</button></div><div id="race-history" class="race-history-grid"></div></section>
+          <section id="predictions" class="season-section"><div class="section-title"><div><span class="eyebrow">No future-result leakage</span><h2>Momentum and prediction</h2></div><button class="export-button" data-export="predictions">Export CSV</button></div><div id="momentum-grid" class="season-card-grid"></div><div id="prediction-panel"></div></section>
+          <details id="methodology" class="methodology-panel"><summary>Methodology, confidence and data quality</summary><div id="methodology-content"></div></details>
+        </div>
+      </section>
     </main>
+<script>
+  window.FASTF1_API_BASE = ["localhost", "127.0.0.1"].includes(location.hostname)
+    ? ""
+    : "https://f1telemetrydashboard.onrender.com";
+</script>
     <script src="assets/app.js"></script>
+    <script src="assets/season.js"></script>
   </body>
 </html>
