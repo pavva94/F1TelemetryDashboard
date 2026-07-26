@@ -57,7 +57,10 @@ def list_events(year: int) -> list[dict[str, Any]]:
 
 def list_session_entries(year: int, event: str, session_name: str, cache_dir: str | None = None) -> dict[str, Any]:
     session = load_fastf1_session(year, event, session_name, cache_dir)
-    laps = session.laps
+    return _session_entries_from_laps(session.laps)
+
+
+def _session_entries_from_laps(laps: pd.DataFrame | None) -> dict[str, Any]:
     drivers: list[dict[str, Any]] = []
     if laps is None or laps.empty:
         return {"drivers": [], "teams": []}
@@ -96,6 +99,7 @@ def session_summary(year: int, event: str, session_name: str, cache_dir: str | N
     fastest_lap = _fastest_lap_summary(laps)
     position_history = _position_history(laps)
     race_insights = _race_insights(laps)
+    entries = _session_entries_from_laps(laps)
     winner = standings[0] if standings else None
     event_info = getattr(session, "event", None)
 
@@ -119,6 +123,8 @@ def session_summary(year: int, event: str, session_name: str, cache_dir: str | N
         "standings": standings,
         "positionHistory": position_history,
         "raceInsights": race_insights,
+        "drivers": entries["drivers"],
+        "teams": entries["teams"],
     }
 
 
@@ -174,7 +180,7 @@ def _empty_session_summary(year: int, event: str, session_name: str, status: str
         "status": status, "message": "This session is not completed or timing data is not available yet." if status == "no_data_yet" else message,
         "round": None, "country": None, "location": None, "date": None, "winner": None, "raceTime": None,
         "fastestLap": None, "lapCount": None, "classifiedDrivers": 0, "standings": [], "positionHistory": [],
-        "raceInsights": _empty_race_insights(),
+        "raceInsights": _empty_race_insights(), "drivers": [], "teams": [],
     }
 
 

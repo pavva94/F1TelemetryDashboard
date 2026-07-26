@@ -26,6 +26,7 @@ def create_app() -> Any:
     try:
         from fastapi import FastAPI, HTTPException, Query
         from fastapi.encoders import jsonable_encoder
+        from fastapi.middleware.cors import CORSMiddleware
         from fastapi.responses import FileResponse, JSONResponse
         from fastapi.staticfiles import StaticFiles
     except ImportError as exc:
@@ -36,6 +37,16 @@ def create_app() -> Any:
         description="No-login telemetry comparison dashboard backed by FastF1 data.",
         version="0.1.0",
     )
+
+    allowed_origins = _allowed_origins()
+    if allowed_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=allowed_origins,
+            allow_credentials=False,
+            allow_methods=["GET"],
+            allow_headers=["*"],
+        )
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
@@ -155,6 +166,12 @@ def _frontend_dir() -> Path:
     if cwd_frontend.exists():
         return cwd_frontend
     return APP_DIR / "frontend"
+
+
+def _allowed_origins() -> list[str]:
+    """Return optional comma-separated frontend origins for split deployments."""
+    configured = os.environ.get("FASTF1_ALLOWED_ORIGINS", "")
+    return [origin.strip().rstrip("/") for origin in configured.split(",") if origin.strip()]
 
 
 app = create_app()

@@ -201,6 +201,14 @@ async function loadComparisonEntries() {
   }
 }
 
+function useLoadedSessionEntries(summary) {
+  referenceDrivers = summary.drivers || [];
+  comparedDrivers = summary.drivers || [];
+  const teams = summary.teams || [...new Set(referenceDrivers.map((driver) => driver.team).filter(Boolean))].sort();
+  fillSelect(els.team, [{ value: "all", label: "All teams" }, ...teams.map((team) => ({ value: team, label: team }))]);
+  renderDrivers();
+}
+
 async function loadRaceSummary() {
   if (!els.season.value || !els.event.value) return;
   const race = weekendSessions.find((item) => item.name === "Race")?.name || "Race";
@@ -220,7 +228,7 @@ async function loadSessionSummary(sessionName) {
     els.sessionA.value = sessionName;
     els.sessionB.value = sessionName;
     if (currentRace.status === "completed") {
-      await loadComparisonEntries();
+      useLoadedSessionEntries(currentRace);
     } else {
       clearComparisonControls();
     }
@@ -2159,7 +2167,8 @@ function sliceTelemetry(t, indices) {
 }
 
 async function api(path) {
-  const response = await fetch(path);
+  const apiBase = String(window.FASTF1_API_BASE || "").replace(/\/$/, "");
+  const response = await fetch(`${apiBase}${path}`);
   if (!response.ok) {
     let detail = response.statusText;
     try {
