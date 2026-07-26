@@ -69,7 +69,7 @@ Useful deployment notes:
 
 - Set `FASTF1_CACHE_DIR` to a persistent writable directory so FastF1 data is cached across requests.
 - Set `PORT` if your host provides a dynamic port.
-- The backend routes are `/api/seasons`, `/api/events`, `/api/session-summary`, `/api/session-entries`, and `/api/compare-best-laps`.
+- The backend routes are `/api/seasons`, `/api/events`, `/api/session-summary`, `/api/session-entries`, `/api/compare-best-laps`, and `/api/season-analysis`.
 - The event view includes every scheduled weekend session in race-first order. Sessions without timing data remain selectable and report `no_data_yet` rather than failing the dashboard.
 - The frontend lives in `frontend/` and is served by FastAPI from the same origin, so it can be placed behind a normal website reverse proxy.
 
@@ -110,7 +110,92 @@ FASTF1_ALLOWED_ORIGINS=https://your-frontend.example
 
 Origins should include the scheme and hostname but no path. Because this dashboard exposes only a public, read-only API, the included Render Blueprint uses `*` so static deployments can connect without extra configuration. Replace it with exact origins if the API later gains authenticated or mutating routes. Leave this variable unset when Render serves the included frontend.
 
-## MVP Capabilities
+## Analysis Routes
+
+The dashboard is a two-page analysis platform:
+
+- `/race` preserves the original single-weekend session, standings, pace, stint, pit-stop, and lap-comparison workflow.
+- `/season` builds a cacheable season dataset across completed rounds and exposes championship evolution, normalized qualifying and race pace, development, team and driver comparisons, reliability, tyres, operations, track suitability, points conversion, momentum, change detection, and leakage-safe predictions.
+- The former `/` URL remains available and opens Race Analysis. Season heatmaps, tables, and race-history cards link back to `/race` with `year`, `event`, `session`, driver, and team query context.
+
+Season filter state is stored in URL query parameters. Direct links, refresh, browser back/forward, and return navigation therefore preserve the active season range and model choices.
+
+## Season Data Pipeline
+
+`src/fastf1_lapdiff/season_analytics.py` loads Race and Qualifying timing without car telemetry, normalizes each completed event, and memoizes the resulting season payload in the web process. FastF1's disk cache remains the event-level source cache. Sprint results are loaded only when requested and when the weekend schedule exposes a sprint.
+
+The public endpoint is:
+
+```text
+GET /api/season-analysis?year=2024&start_round=1&end_round=24&include_sprints=true
+```
+
+The response explicitly separates:
+
+- observed results and clean-lap medians;
+- adjusted estimates, including tyre-age and race-lap proxy corrections;
+- model estimates such as expected points;
+- predictions, including the exact historical rounds used;
+- quality metadata, exclusions, sample sizes, and confidence.
+
+The page reports completed-round coverage, partial session failures, generation time, retryable errors, and unavailable metrics when evidence is below its minimum sample size. Expensive transformations run server-side and client-side chart transformations are derived from the already-normalized payload.
+
+## Season Metrics and Models
+
+- **Qualifying deficit:** `(representative time / fastest event representative time - 1) × 100`.
+- **Observed race pace:** robust median of accurate timed laps after pit, deleted, neutralised, and MAD-outlier exclusions, normalized per event.
+- **Adjusted race pace:** observed pace with fitted tyre-age and race-lap trends removed. Race lap is disclosed as a fuel/track-evolution proxy because FastF1 does not expose fuel load.
+- **Development:** normalized-deficit slope per round, early-versus-recent robust medians, confidence interval, R², and approximate median-split change points.
+- **Reliability:** classification from published result status, separating classified finishes, mechanical failures, incidents, DNS, and DSQ.
+- **Tyre degradation:** `lap time = intercept + tyre age + race lap`, with residual MAD and lap count.
+- **Expected points:** combined performance rank mapped to the points schedule and scaled by observed team classification probability. This is a transparent benchmark, not objective truth.
+- **Points conversion:** actual points divided by expected points, with zero-expectation handled as undefined.
+- **Momentum:** centralized documented weights in `MOMENTUM_WEIGHTS` for race pace, qualifying, points, development, reliability, and observable pit operations.
+- **Prediction:** recent three-round median plus development slope, trained only on rounds strictly before the target. Historical backtests expose rank and deficit error.
+
+Every formula, minimum sample, exclusion rule, and limitation is also available in the in-product Methodology panel.
+
+## Maintained Metadata
+
+`src/fastf1_lapdiff/season_metadata.py` contains categorical circuit metadata. It deliberately avoids unsupported precise measurements. Categories describe circuit clusters, general speed/downforce profile, and tyre-stress tendency and are used only for association and similar-circuit views.
+
+Upgrade metadata uses this schema:
+
+```python
+{
+    "team": "Example Team",
+    "round": 7,
+    "event": "Example Grand Prix",
+    "component": "Floor",
+    "category": "floor",
+    "description": "Source-supported description",
+    "source": "https://authoritative.example/report",
+    "confidence": "high",
+}
+```
+
+Only entries with a source are published. FastF1 does not provide an authoritative upgrade, power-unit penalty, unsafe-release, traffic, car-damage, or strategy-intent feed. The dashboard therefore withholds those claims when no sourced metadata exists and labels before/after upgrade output as association rather than causation. It also avoids presenting grid-to-finish change as pure overtaking.
+
+## Season Analysis Limitations
+
+- Traffic, damage, exact fuel load, race-management intent, and precise clean-air state are not directly available.
+- Adjusted pace uses reproducible proxies and falls back to observed pace when fewer than five clean laps support the fit.
+- Pit timing is pit-lane duration where paired FastF1 timestamps exist, not stationary wheel-change time.
+- Circuit characteristics are maintained qualitative metadata, not measured telemetry values.
+- Weather filtering uses session rainfall observations; no forecast service is invented for future events.
+- Expected points and predictions are explicitly modelled estimates with confidence and historical leakage guards.
+
+## Testing
+
+The repository's dependency-light runner executes the existing race-analysis tests and all season model tests:
+
+```bash
+.venv/bin/python tests/run_tests.py
+```
+
+The season suite covers percentage deficits, rolling medians, MAD outlier rejection, lap-quality filtering, development regression, early/recent comparisons, reliability classification, degradation, expected-points conversion, change-point detection, aggregation, API routes, and strict no-future-data prediction backtests.
+
+## Capabilities
 
 - Distance-based telemetry alignment
 - Total and sector delta calculations

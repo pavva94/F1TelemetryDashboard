@@ -220,6 +220,34 @@ def test_session_summary_entries_can_reuse_loaded_laps() -> None:
     assert entries["teams"] == ["Ferrari", "Red Bull Racing"]
 
 
+def test_session_entries_keep_driver_without_timed_lap() -> None:
+    laps = pd.DataFrame(
+        [
+            {
+                "Driver": "DNS",
+                "Team": "Example Racing",
+                "LapNumber": None,
+                "LapTime": pd.NaT,
+                "IsAccurate": False,
+            }
+        ]
+    )
+
+    entries = _session_entries_from_laps(laps)
+
+    assert entries["drivers"] == [
+        {
+            "code": "DNS",
+            "team": "Example Racing",
+            "fastestLap": None,
+            "fastestLapTime": None,
+            "cleanLapCount": 0,
+            "totalLapCount": 1,
+        }
+    ]
+    assert entries["teams"] == ["Example Racing"]
+
+
 def test_allowed_origins_parses_split_frontend_hosts() -> None:
     previous = os.environ.get("FASTF1_ALLOWED_ORIGINS")
     try:

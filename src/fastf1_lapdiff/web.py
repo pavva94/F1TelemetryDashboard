@@ -16,6 +16,7 @@ from .fastf1_loader import (
     select_best_lap_from_session,
     weather_context_for_lap,
 )
+from .season_analytics import cached_season_analysis
 
 
 APP_DIR = Path(__file__).resolve().parents[2]
@@ -87,6 +88,21 @@ def create_app() -> Any:
         except Exception as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
+    @app.get("/api/season-analysis")
+    def season_analysis_route(
+        year: int = Query(..., ge=2018, le=2100),
+        start_round: int | None = Query(None, ge=1),
+        end_round: int | None = Query(None, ge=1),
+        include_sprints: bool = True,
+    ) -> JSONResponse:
+        if start_round is not None and end_round is not None and start_round > end_round:
+            raise HTTPException(status_code=422, detail="start_round must be less than or equal to end_round")
+        try:
+            data = cached_season_analysis(year, DEFAULT_CACHE_DIR, start_round, end_round, include_sprints)
+            return JSONResponse(jsonable_encoder(data))
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
     @app.get("/api/compare-best-laps")
     def compare_best_laps(
         year: int,
@@ -135,6 +151,11 @@ def create_app() -> Any:
 
         @app.get("/")
         def index() -> FileResponse:
+            return FileResponse(frontend_dir / "index.html")
+
+        @app.get("/race")
+        @app.get("/season")
+        def analysis_route() -> FileResponse:
             return FileResponse(frontend_dir / "index.html")
 
     return app
