@@ -157,6 +157,9 @@ def test_multi_event_aggregation_builds_all_major_sections() -> None:
     assert payload["conversion"]["teams"]
     assert payload["momentum"]
     assert payload["trackAnalysis"]["metadataCoverage"] == 3
+    assert payload["trackAnalysis"]["teamCount"] == 2
+    assert payload["trackAnalysis"]["teamsAnalyzed"] == ["Alpha", "Beta"]
+    assert {row["team"] for row in payload["trackAnalysis"]["strengths"]} == {"Alpha", "Beta"}
     assert payload["methodology"]["prediction"]
 
 

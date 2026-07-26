@@ -3,6 +3,10 @@
   const apiBase = String(window.FASTF1_API_BASE || "").replace(/\/$/, "");
   const state = { payload: null, schedule: [], filteredRecords: [], route: null };
   const teamColours = ["#0a7c86", "#d23b3b", "#2f5fca", "#8b5bc2", "#d38324", "#198754", "#cf4b92", "#69747a", "#7c6f2c", "#13a7a1"];
+  const chartInteractions = new WeakMap();
+  const chartHover = new WeakMap();
+  const boundCharts = new WeakSet();
+  let seasonChartTooltip = null;
   const elements = {
     racePage: $("#race-page"), seasonPage: $("#season-page"), form: $("#season-filters"),
     year: $("#season-year"), start: $("#season-start-round"), end: $("#season-end-round"),
@@ -17,6 +21,7 @@
   init();
 
   async function init() {
+    createSeasonChartTooltip();
     wireRouting();
     wireFilters();
     if (location.pathname.replace(/\/+$/, "") === "/season") {
@@ -276,7 +281,8 @@
 
   function renderTeams() {
     const selected = selectedValues(elements.teams);
-    const teams = selected.length ? selected : state.payload.entities.teams.slice(0, 3);
+    const visibleTeams = visibleEntities("team");
+    const teams = selected.length ? selected.filter((team) => visibleTeams.includes(team)) : visibleTeams;
     const metrics = teams.map((team) => ({
       team,
       points: groupSum(state.filteredRecords.filter((row) => row.team === team), "team", pointValue)[0]?.value || 0,
@@ -289,11 +295,22 @@
     const bestQ = [...metrics].filter((row) => row.qualifying != null).sort((a, b) => a.qualifying - b.qualifying)[0];
     const bestRace = [...metrics].filter((row) => row.race != null).sort((a, b) => a.race - b.race)[0];
     const bestExecution = [...metrics].filter((row) => row.conversion != null).sort((a, b) => b.conversion - a.conversion)[0];
-    $("#team-summary").textContent = [
-      bestQ && `${bestQ.team} has the strongest median qualifying performance.`,
-      bestRace && `${bestRace.team} leads the selected race-pace evidence.`,
-      bestExecution && `${bestExecution.team} has the best actual-minus-expected points conversion.`,
-    ].filter(Boolean).join(" ");
+    const analyzedTeamCount = state.payload.trackAnalysis.teamCount ?? state.payload.trackAnalysis.teamsAnalyzed?.length ?? state.payload.entities.teams.length;
+    const taggedEventCount = state.payload.trackAnalysis.metadataCoverage ?? 0;
+    const leaderSummary = [
+      bestQ && `${bestQ.team} leads qualifying at ${nullablePerformance(bestQ.qualifying)}`,
+      bestRace && `${bestRace.team} leads race pace at ${nullablePerformance(bestRace.race)}`,
+      bestExecution && `${bestExecution.team} leads points conversion at ${nullableSigned(bestExecution.conversion, " pts")}`,
+    ].filter(Boolean).join("; ");
+    $("#team-summary").innerHTML = `
+      <div class="team-summary-grid">
+        <div><strong>Coverage</strong><span>${selected.length ? `${teams.length} selected team${teams.length === 1 ? "" : "s"} shown` : `All ${teams.length} teams allowed by the current filters are shown`}. The season model analyzed ${analyzedTeamCount} team${analyzedTeamCount === 1 ? "" : "s"} across ${visibleRounds().length} selected round${visibleRounds().length === 1 ? "" : "s"}.</span></div>
+        <div><strong>Performance</strong><span>Qualifying and race-pace deficits measure the gap to the fastest team. Lower percentages are faster; 0.000% is the benchmark.</span></div>
+        <div><strong>Track suitability</strong><span>Each circuit-type value compares a team with its own season-median race pace. Negative is stronger than usual; positive is weaker. ${taggedEventCount} event${taggedEventCount === 1 ? "" : "s"} had maintained circuit tags.</span></div>
+        <div><strong>Execution</strong><span>Reliability is classified finishes divided by starts. Points vs model is actual points minus a pace-rank estimate. Recent form is a documented 0–100 momentum score.</span></div>
+      </div>
+      ${leaderSummary ? `<p class="team-leaders"><strong>Leaders in this view:</strong> ${escapeHtml(leaderSummary)}.</p>` : ""}
+    `;
     $("#team-table").innerHTML = table(["Team", "Points", "Qualifying deficit", "Race-pace deficit", "Reliability", "Pts vs expected", "Momentum"], metrics.map((row) => [
       row.team, row.points.toFixed(0), nullablePerformance(row.qualifying), nullablePerformance(row.race),
       row.reliability == null ? "—" : `${row.reliability.toFixed(0)}%`, nullableSigned(row.conversion, " pts"), row.momentum == null ? "—" : row.momentum.toFixed(0),
@@ -302,8 +319,10 @@
     const clusters = [...new Set(strengths.map((row) => row.cluster))];
     $("#track-heatmap").innerHTML = heatmapTable(teams, clusters, (team, cluster) => {
       const row = strengths.find((item) => item.team === team && item.cluster === cluster);
-      return row ? `<span class="heat-cell" style="--heat:${Math.min(100, Math.abs(row.relativeStrength) * 80)}" title="Negative means stronger than own season average">${signed(row.relativeStrength, 3, "%")}</span>` : "—";
-    }, "Team / cluster");
+      if (!row) return "—";
+      const eventLabel = `${row.events} event${row.events === 1 ? "" : "s"}`;
+      return `<span class="heat-cell track-strength-cell" style="--heat:${Math.min(100, Math.abs(row.relativeStrength) * 80)}" title="${escapeHtml(`${humanize(cluster)}: ${signed(row.relativeStrength, 3, "%")} versus the team's season median. Negative is stronger. ${eventLabel}, ${row.confidence} confidence.`)}"><strong>${signed(row.relativeStrength, 3, "%")}</strong><small>${eventLabel} · ${escapeHtml(row.confidence)}</small></span>`;
+    }, "Team / circuit type", humanize);
   }
 
   function renderDrivers() {
@@ -386,15 +405,39 @@
 
   function renderCharts() {
     const key = elements.level.value === "driver" ? "driver" : "team";
-    drawLineChart($("#championship-chart"), cumulativeFromRecords(key), { yLabel: "Cumulative points", invert: false });
-    drawLineChart($("#bump-chart"), rankFromRecords(key), { yLabel: "Championship rank", invert: true });
+    drawLineChart($("#championship-chart"), cumulativeFromRecords(key), {
+      yLabel: "Cumulative points",
+      highAtTop: true,
+      valueLabel: (value) => `${value.toFixed(1)} pts`,
+      xLabel: (value) => `Round ${value}`,
+    });
+    drawLineChart($("#bump-chart"), rankFromRecords(key), {
+      yLabel: "Championship rank",
+      valueLabel: (value) => `P${Math.round(value)}`,
+      xLabel: (value) => `Round ${value}`,
+    });
     const performanceUnit = elements.reference.value === "absolute" ? "Time (seconds)" : "Deficit (%) · lower is better";
+    const performanceValue = elements.reference.value === "absolute"
+      ? (value) => `${value.toFixed(3)} s`
+      : (value) => `${value >= 0 ? "+" : ""}${value.toFixed(3)}%`;
     $("#qualifying-chart").setAttribute("aria-label", elements.reference.value === "absolute" ? "Representative qualifying time trend in seconds" : "Qualifying percentage deficit trend");
     $("#race-pace-chart").setAttribute("aria-label", elements.reference.value === "absolute" ? "Representative race pace trend in seconds" : "Race pace percentage deficit trend");
-    drawLineChart($("#qualifying-chart"), metricEnabled("qualifyingDeficit") ? metricSeries("qualifyingDeficit", key) : [], { yLabel: performanceUnit });
-    drawLineChart($("#race-pace-chart"), metricEnabled(paceMetric()) ? metricSeries(paceMetric(), key) : [], { yLabel: performanceUnit });
-    drawScatter($("#pace-scatter"), elements.session.value === "combined" ? scatterData(key) : []);
-    drawScatter($("#conversion-chart"), state.payload.conversion.teams.filter((row) => hasTeam(row.entity)).map((row) => ({ label: row.entity, x: row.expected, y: row.actual })), { xLabel: "Expected points (model)", yLabel: "Actual points" });
+    drawLineChart($("#qualifying-chart"), metricEnabled("qualifyingDeficit") ? metricSeries("qualifyingDeficit", key) : [], {
+      yLabel: performanceUnit, valueLabel: performanceValue, xLabel: (value) => `Round ${value}`,
+    });
+    drawLineChart($("#race-pace-chart"), metricEnabled(paceMetric()) ? metricSeries(paceMetric(), key) : [], {
+      yLabel: performanceUnit, valueLabel: performanceValue, xLabel: (value) => `Round ${value}`,
+    });
+    drawScatter($("#pace-scatter"), elements.session.value === "combined" ? scatterData(key) : [], {
+      xLabel: "Qualifying deficit (%)", yLabel: "Race-pace deficit (%)",
+      xValueLabel: (value) => `Qualifying deficit: ${value >= 0 ? "+" : ""}${value.toFixed(3)}%`,
+      yValueLabel: (value) => `Race-pace deficit: ${value >= 0 ? "+" : ""}${value.toFixed(3)}%`,
+    });
+    drawScatter($("#conversion-chart"), state.payload.conversion.teams.filter((row) => hasTeam(row.entity)).map((row) => ({ label: row.entity, x: row.expected, y: row.actual })), {
+      xLabel: "Expected points (model)", yLabel: "Actual points",
+      xValueLabel: (value) => `${value.toFixed(1)} expected`,
+      yValueLabel: (value) => `${value.toFixed(1)} actual`,
+    });
   }
 
   function metricSeries(metric, key) {
@@ -441,26 +484,81 @@
   function drawLineChart(canvas, series, options = {}) {
     if (!canvas) return;
     const { ctx, width, height } = prepareCanvas(canvas);
-    const pad = { left: 58, right: 20, top: 28, bottom: 44 };
+    const pad = { left: 58, right: 112, top: 28, bottom: 44 };
     ctx.clearRect(0, 0, width, height);
     const points = series.flatMap((item) => item.points);
-    if (!points.length) return drawEmpty(ctx, width, height);
+    if (!points.length) {
+      disableChartInteraction(canvas);
+      return drawEmpty(ctx, width, height);
+    }
     const xs = points.map((point) => point.x), ys = points.map((point) => point.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
     axes(ctx, width, height, pad, options.yLabel || "");
-    const xScale = (value) => pad.left + ((value - minX) / (maxX - minX || 1)) * (width - pad.left - pad.right);
-    const yScale = (value) => pad.top + ((value - minY) / (maxY - minY || 1)) * (height - pad.top - pad.bottom);
+    const xScale = (value) => minX === maxX
+      ? pad.left + (width - pad.left - pad.right) / 2
+      : pad.left + ((value - minX) / (maxX - minX)) * (width - pad.left - pad.right);
+    const yScale = (value) => {
+      const normalized = ((value - minY) / (maxY - minY || 1)) * (height - pad.top - pad.bottom);
+      return options.highAtTop ? height - pad.bottom - normalized : pad.top + normalized;
+    };
+    const interactivePoints = [];
+    const endLabels = [];
     series.slice(0, 12).forEach((item, index) => {
+      const colour = teamColours[index % teamColours.length];
       ctx.strokeStyle = teamColours[index % teamColours.length]; ctx.lineWidth = 2.2; ctx.setLineDash(index >= teamColours.length ? [5, 4] : []);
       ctx.beginPath();
-      item.points.forEach((point, pointIndex) => { const x = xScale(point.x), y = yScale(point.y); pointIndex ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      item.points.forEach((point, pointIndex) => {
+        const x = xScale(point.x), y = yScale(point.y);
+        interactivePoints.push({ label: item.label, x, y, xValue: point.x, yValue: point.y, colour });
+        pointIndex ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      });
       ctx.stroke(); ctx.setLineDash([]);
       const last = item.points.at(-1);
-      if (last) { ctx.fillStyle = teamColours[index % teamColours.length]; ctx.font = "11px system-ui"; ctx.fillText(item.label, Math.min(width - 80, xScale(last.x) + 4), yScale(last.y)); }
+      if (last) endLabels.push({ label: item.label, colour, pointX: xScale(last.x), pointY: yScale(last.y), labelY: yScale(last.y) });
     });
+    drawEndLabels(ctx, endLabels, width - pad.right + 9, pad.top + 4, height - pad.bottom - 3);
     ctx.fillStyle = css("--muted"); ctx.font = "11px system-ui";
-    ctx.fillText(String(minX), pad.left, height - 16); ctx.fillText(String(maxX), width - pad.right - 18, height - 16);
-    ctx.fillText(minY.toFixed(2), 8, pad.top + 4); ctx.fillText(maxY.toFixed(2), 8, height - pad.bottom);
+    if (minX === maxX) {
+      ctx.textAlign = "center";
+      ctx.fillText(String(minX), xScale(minX), height - 16);
+      ctx.textAlign = "left";
+    } else {
+      ctx.fillText(String(minX), pad.left, height - 16);
+      ctx.fillText(String(maxX), width - pad.right - 18, height - 16);
+    }
+    ctx.fillText((options.highAtTop ? maxY : minY).toFixed(2), 8, pad.top + 4);
+    ctx.fillText((options.highAtTop ? minY : maxY).toFixed(2), 8, height - pad.bottom);
+    registerChartInteraction(canvas, {
+      type: "line",
+      points: interactivePoints,
+      valueLabel: options.valueLabel || ((value) => value.toFixed(2)),
+      xLabel: options.xLabel || ((value) => String(value)),
+      redraw: () => drawLineChart(canvas, series, options),
+    });
+    drawLineHover(ctx, canvas, interactivePoints, height, pad);
+  }
+
+  function drawEndLabels(ctx, labels, x, top, bottom) {
+    if (!labels.length) return;
+    const gap = 13;
+    const ordered = [...labels].sort((a, b) => a.labelY - b.labelY);
+    ordered[0].labelY = Math.max(top, ordered[0].labelY);
+    for (let index = 1; index < ordered.length; index += 1) {
+      ordered[index].labelY = Math.max(ordered[index].labelY, ordered[index - 1].labelY + gap);
+    }
+    const overflow = ordered.at(-1).labelY - bottom;
+    if (overflow > 0) ordered.forEach((item) => { item.labelY -= overflow; });
+    for (let index = ordered.length - 2; index >= 0; index -= 1) {
+      ordered[index].labelY = Math.min(ordered[index].labelY, ordered[index + 1].labelY - gap);
+    }
+    ctx.save();
+    ctx.font = "10px system-ui";
+    ordered.forEach((item) => {
+      ctx.fillStyle = item.colour;
+      ctx.beginPath(); ctx.arc(x - 4, item.labelY, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillText(item.label, x + 3, item.labelY + 3);
+    });
+    ctx.restore();
   }
 
   function drawScatter(canvas, points, options = {}) {
@@ -468,17 +566,131 @@
     const { ctx, width, height } = prepareCanvas(canvas);
     const pad = { left: 58, right: 24, top: 28, bottom: 46 };
     ctx.clearRect(0, 0, width, height);
-    if (!points.length) return drawEmpty(ctx, width, height);
+    if (!points.length) {
+      disableChartInteraction(canvas);
+      return drawEmpty(ctx, width, height);
+    }
     const xs = points.map((point) => point.x), ys = points.map((point) => point.y);
     const minX = Math.min(0, ...xs), maxX = Math.max(...xs) * 1.08 || 1, minY = Math.min(0, ...ys), maxY = Math.max(...ys) * 1.08 || 1;
     axes(ctx, width, height, pad, options.yLabel || "Race-pace deficit (%)");
     ctx.fillStyle = css("--muted"); ctx.font = "11px system-ui"; ctx.fillText(options.xLabel || "Qualifying deficit (%)", width / 2 - 55, height - 10);
+    const interactivePoints = [];
     points.forEach((point, index) => {
       const x = pad.left + ((point.x - minX) / (maxX - minX || 1)) * (width - pad.left - pad.right);
       const y = height - pad.bottom - ((point.y - minY) / (maxY - minY || 1)) * (height - pad.top - pad.bottom);
-      ctx.fillStyle = teamColours[index % teamColours.length]; ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
+      const colour = teamColours[index % teamColours.length];
+      interactivePoints.push({ ...point, xScreen: x, yScreen: y, colour });
+      ctx.fillStyle = colour; ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = css("--ink"); ctx.font = "10px system-ui"; ctx.fillText(point.label, x + 8, y + 3);
     });
+    registerChartInteraction(canvas, {
+      type: "scatter",
+      points: interactivePoints,
+      xLabel: options.xValueLabel || ((value) => value.toFixed(2)),
+      yLabel: options.yValueLabel || ((value) => value.toFixed(2)),
+      redraw: () => drawScatter(canvas, points, options),
+    });
+    drawScatterHover(ctx, canvas, interactivePoints);
+  }
+
+  function createSeasonChartTooltip() {
+    seasonChartTooltip = document.createElement("div");
+    seasonChartTooltip.className = "season-chart-tooltip";
+    seasonChartTooltip.setAttribute("role", "status");
+    seasonChartTooltip.hidden = true;
+    document.body.appendChild(seasonChartTooltip);
+  }
+
+  function registerChartInteraction(canvas, interaction) {
+    chartInteractions.set(canvas, interaction);
+    canvas.classList.add("interactive-chart");
+    if (boundCharts.has(canvas)) return;
+    boundCharts.add(canvas);
+    canvas.addEventListener("mousemove", handleChartHover);
+    canvas.addEventListener("mouseleave", clearChartHover);
+  }
+
+  function disableChartInteraction(canvas) {
+    chartInteractions.delete(canvas);
+    chartHover.delete(canvas);
+    canvas.classList.remove("interactive-chart");
+    if (seasonChartTooltip) seasonChartTooltip.hidden = true;
+  }
+
+  function handleChartHover(event) {
+    const canvas = event.currentTarget;
+    const interaction = chartInteractions.get(canvas);
+    if (!interaction) return;
+    const bounds = canvas.getBoundingClientRect();
+    const x = event.clientX - bounds.left;
+    const y = event.clientY - bounds.top;
+    if (interaction.type === "line") {
+      const nearest = interaction.points.reduce((best, point) => !best || Math.abs(point.x - x) < Math.abs(best.x - x) ? point : best, null);
+      if (!nearest) return;
+      chartHover.set(canvas, { type: "line", xValue: nearest.xValue });
+      interaction.redraw();
+      const selected = interaction.points.filter((point) => point.xValue === nearest.xValue).sort((a, b) => a.yValue - b.yValue);
+      seasonChartTooltip.innerHTML = `<strong>${escapeHtml(interaction.xLabel(nearest.xValue))}</strong>${selected.slice(0, 12).map((point) => `<span><i style="--tooltip-colour:${point.colour}"></i>${escapeHtml(point.label)}<b>${escapeHtml(interaction.valueLabel(point.yValue))}</b></span>`).join("")}`;
+    } else {
+      const nearest = interaction.points.reduce((best, point) => {
+        const distance = Math.hypot(point.xScreen - x, point.yScreen - y);
+        return !best || distance < best.distance ? { point, distance } : best;
+      }, null);
+      if (!nearest || nearest.distance > 42) {
+        clearChartHover.call(canvas, { currentTarget: canvas });
+        return;
+      }
+      chartHover.set(canvas, { type: "scatter", label: nearest.point.label });
+      interaction.redraw();
+      seasonChartTooltip.innerHTML = `<strong>${escapeHtml(nearest.point.label)}</strong><span>${escapeHtml(interaction.xLabel(nearest.point.x))}</span><span>${escapeHtml(interaction.yLabel(nearest.point.y))}</span>`;
+    }
+    positionChartTooltip(event.clientX, event.clientY);
+  }
+
+  function clearChartHover(event) {
+    const canvas = event.currentTarget || this;
+    const interaction = chartInteractions.get(canvas);
+    if (!interaction) return;
+    chartHover.delete(canvas);
+    interaction.redraw();
+    seasonChartTooltip.hidden = true;
+  }
+
+  function positionChartTooltip(clientX, clientY) {
+    seasonChartTooltip.hidden = false;
+    const gap = 14;
+    const width = seasonChartTooltip.offsetWidth;
+    const height = seasonChartTooltip.offsetHeight;
+    seasonChartTooltip.style.left = `${Math.max(8, Math.min(window.innerWidth - width - 8, clientX + gap))}px`;
+    seasonChartTooltip.style.top = `${Math.max(8, Math.min(window.innerHeight - height - 8, clientY + gap))}px`;
+  }
+
+  function drawLineHover(ctx, canvas, points, height, pad) {
+    const hover = chartHover.get(canvas);
+    if (!hover || hover.type !== "line") return;
+    const selected = points.filter((point) => point.xValue === hover.xValue);
+    if (!selected.length) return;
+    ctx.save();
+    ctx.strokeStyle = "rgba(22, 32, 29, .28)";
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(selected[0].x, pad.top); ctx.lineTo(selected[0].x, height - pad.bottom); ctx.stroke();
+    ctx.setLineDash([]);
+    selected.forEach((point) => {
+      ctx.fillStyle = css("--panel"); ctx.strokeStyle = point.colour; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(point.x, point.y, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  function drawScatterHover(ctx, canvas, points) {
+    const hover = chartHover.get(canvas);
+    if (!hover || hover.type !== "scatter") return;
+    const point = points.find((item) => item.label === hover.label);
+    if (!point) return;
+    ctx.save();
+    ctx.strokeStyle = point.colour; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(point.xScreen, point.yScreen, 10, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
   }
 
   function axes(ctx, width, height, pad, label) {
@@ -565,8 +777,8 @@
     return `<table class="season-table"><thead><tr>${headers.map((header, index) => `<th><button type="button" data-column="${index}" aria-label="Sort by ${escapeHtml(header)}">${escapeHtml(header)}</button></th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${typeof cell === "string" && /<[^>]+>/.test(cell) ? cell : escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
   }
 
-  function heatmapTable(entities, columns, renderer, corner = "Entity / round") {
-    return `<table class="season-table"><thead><tr><th>${escapeHtml(corner)}</th>${columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("")}</tr></thead><tbody>${entities.map((entity) => `<tr><th>${escapeHtml(entity)}</th>${columns.map((column) => `<td>${renderer(entity, column)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  function heatmapTable(entities, columns, renderer, corner = "Entity / round", columnLabel = (column) => column) {
+    return `<table class="season-table"><thead><tr><th>${escapeHtml(corner)}</th>${columns.map((column) => `<th>${escapeHtml(columnLabel(column))}</th>`).join("")}</tr></thead><tbody>${entities.map((entity) => `<tr><th>${escapeHtml(entity)}</th>${columns.map((column) => `<td>${renderer(entity, column)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
   }
 
   function selectedValues(select) { return [...select.selectedOptions].map((option) => option.value); }
@@ -646,7 +858,7 @@
   function formatPercent(value) { return value == null ? "—" : `${value.toFixed(3)}%`; }
   function formatPoints(value) { return value == null ? null : `${value.toFixed(0)} points`; }
   function signed(value, digits = 2, unit = "") { return value == null ? "—" : `${value >= 0 ? "+" : ""}${value.toFixed(digits)}${unit}`; }
-  function humanize(value) { return value.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (char) => char.toUpperCase()); }
+  function humanize(value) { return value.replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (char) => char.toUpperCase()); }
   function formatDate(value) { if (!value) return "date unavailable"; const date = new Date(value); return Number.isNaN(date.valueOf()) ? String(value) : date.toLocaleDateString(undefined, { dateStyle: "medium" }); }
   function setStatus(message, error = false) { elements.status.textContent = message; elements.status.classList.toggle("error", error); }
   function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }

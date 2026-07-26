@@ -794,7 +794,14 @@ def _track_analysis(team_series: dict[str, list[dict[str, Any]]], events: dict[i
                 by_cluster[metadata["cluster"]].append(point["deficit"])
         for cluster, values in by_cluster.items():
             rows.append({"team": team, "cluster": cluster, "relativeStrength": (float(median(values)) - baseline) if baseline is not None else None, "events": len(values), "confidence": confidence_for(len(values)), "kind": "categorical association"})
-    return {"strengths": rows, "metadataCoverage": len([event for event in events.values() if circuit_characteristics(event.get("name", ""))]), "metadataKind": "maintained qualitative categories"}
+    teams_analyzed = sorted(team_series)
+    return {
+        "strengths": rows,
+        "teamsAnalyzed": teams_analyzed,
+        "teamCount": len(teams_analyzed),
+        "metadataCoverage": len([event for event in events.values() if circuit_characteristics(event.get("name", ""))]),
+        "metadataKind": "maintained qualitative categories",
+    }
 
 
 def _similar_circuits(target: dict[str, Any], events: list[dict[str, Any]]) -> list[dict[str, Any]]:
