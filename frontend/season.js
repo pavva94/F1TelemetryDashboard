@@ -2,7 +2,6 @@
   const $ = (selector) => document.querySelector(selector);
   const apiBase = String(window.FASTF1_API_BASE || "").replace(/\/$/, "");
   const state = { payload: null, schedule: [], filteredRecords: [], route: null };
-  const teamColours = ["#0a7c86", "#d23b3b", "#2f5fca", "#8b5bc2", "#d38324", "#198754", "#cf4b92", "#69747a", "#7c6f2c", "#13a7a1"];
   const chartInteractions = new WeakMap();
   const chartHover = new WeakMap();
   const boundCharts = new WeakSet();
@@ -430,12 +429,14 @@
   function renderCharts() {
     const key = elements.level.value === "driver" ? "driver" : "team";
     drawLineChart($("#championship-chart"), cumulativeFromRecords(key), {
+      entityKey: key,
       yLabel: "Cumulative points",
       highAtTop: true,
       valueLabel: (value) => `${value.toFixed(1)} pts`,
       xLabel: (value) => `Round ${value}`,
     });
     drawLineChart($("#bump-chart"), rankFromRecords(key), {
+      entityKey: key,
       yLabel: "Championship rank",
       valueLabel: (value) => `P${Math.round(value)}`,
       xLabel: (value) => `Round ${value}`,
@@ -447,17 +448,21 @@
     $("#qualifying-chart").setAttribute("aria-label", elements.reference.value === "absolute" ? "Representative qualifying time trend in seconds" : "Qualifying percentage deficit trend");
     $("#race-pace-chart").setAttribute("aria-label", elements.reference.value === "absolute" ? "Representative race pace trend in seconds" : "Race pace percentage deficit trend");
     drawLineChart($("#qualifying-chart"), metricEnabled("qualifyingDeficit") ? metricSeries("qualifyingDeficit", key) : [], {
+      entityKey: key,
       yLabel: performanceUnit, valueLabel: performanceValue, xLabel: (value) => `Round ${value}`,
     });
     drawLineChart($("#race-pace-chart"), metricEnabled(paceMetric()) ? metricSeries(paceMetric(), key) : [], {
+      entityKey: key,
       yLabel: performanceUnit, valueLabel: performanceValue, xLabel: (value) => `Round ${value}`,
     });
     drawScatter($("#pace-scatter"), elements.session.value === "combined" ? scatterData(key) : [], {
+      entityKey: key,
       xLabel: "Qualifying deficit (%)", yLabel: "Race-pace deficit (%)",
       xValueLabel: (value) => `Qualifying deficit: ${value >= 0 ? "+" : ""}${value.toFixed(3)}%`,
       yValueLabel: (value) => `Race-pace deficit: ${value >= 0 ? "+" : ""}${value.toFixed(3)}%`,
     });
     drawScatter($("#conversion-chart"), state.payload.conversion.teams.filter((row) => hasTeam(row.entity)).map((row) => ({ label: row.entity, x: row.expected, y: row.actual })), {
+      entityKey: "team",
       xLabel: "Expected points (model)", yLabel: "Actual points",
       xValueLabel: (value) => `${value.toFixed(1)} expected`,
       yValueLabel: (value) => `${value.toFixed(1)} actual`,
@@ -528,8 +533,8 @@
     const interactivePoints = [];
     const endLabels = [];
     series.slice(0, 12).forEach((item, index) => {
-      const colour = teamColours[index % teamColours.length];
-      ctx.strokeStyle = teamColours[index % teamColours.length]; ctx.lineWidth = 2.2; ctx.setLineDash(index >= teamColours.length ? [5, 4] : []);
+      const colour = entityColour(item.label, options.entityKey);
+      ctx.strokeStyle = colour; ctx.lineWidth = 2.5; ctx.setLineDash([]);
       ctx.beginPath();
       item.points.forEach((point, pointIndex) => {
         const x = xScale(point.x), y = yScale(point.y);
@@ -602,7 +607,7 @@
     points.forEach((point, index) => {
       const x = pad.left + ((point.x - minX) / (maxX - minX || 1)) * (width - pad.left - pad.right);
       const y = height - pad.bottom - ((point.y - minY) / (maxY - minY || 1)) * (height - pad.top - pad.bottom);
-      const colour = teamColours[index % teamColours.length];
+      const colour = entityColour(point.label, options.entityKey);
       interactivePoints.push({ ...point, xScreen: x, yScreen: y, colour });
       ctx.fillStyle = colour; ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = css("--ink"); ctx.font = "10px system-ui"; ctx.fillText(point.label, x + 8, y + 3);
@@ -781,7 +786,8 @@
 
   function table(headers, rows) {
     if (!rows.length) return `<p class="unavailable">Insufficient comparable data for this selection.</p>`;
-    return `<table class="season-table"><thead><tr>${headers.map((header, index) => `<th><button type="button" data-column="${index}" aria-label="Sort by ${escapeHtml(header)}">${escapeHtml(header)}</button></th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${typeof cell === "string" && /<[^>]+>/.test(cell) ? cell : escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    const teamIndex = headers.indexOf("Team");
+    return `<table class="season-table"><thead><tr>${headers.map((header, index) => `<th><button type="button" data-column="${index}" aria-label="Sort by ${escapeHtml(header)}">${escapeHtml(header)}</button></th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr style="${teamIndex >= 0 ? `--team-color:${teamColour(row[teamIndex])}` : ""}">${row.map((cell, index) => `<td>${index === teamIndex ? `<span class="team-label"><i aria-hidden="true"></i>${escapeHtml(cell)}</span>` : typeof cell === "string" && /<[^>]+>/.test(cell) ? cell : escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
   }
 
   function heatmapTable(entities, columns, renderer, corner = "Entity / round", columnLabel = (column) => column) {
@@ -796,6 +802,12 @@
   }
   function visibleRounds() { return [...new Set(state.filteredRecords.map((row) => row.round))].sort((a, b) => a - b); }
   function visibleEntities(key) { return [...new Set(state.filteredRecords.map((row) => row[key]).filter(Boolean))]; }
+  function entityColour(entity, key) {
+    if (key === "team") return teamColour(entity);
+    const team = state.filteredRecords.find((row) => row.driver === entity)?.team;
+    return teamColour(team);
+  }
+  function teamColour(team) { return window.F1Teams?.color(team) || "#6E7480"; }
   function hasTeam(team) { const selected = selectedValues(elements.teams); return !selected.length || selected.includes(team); }
   function hasDriver(driver) { const selected = selectedValues(elements.drivers); return !selected.length || selected.includes(driver); }
   function filteredTeams(rows) { return rows.filter((row) => hasTeam(row.team)); }

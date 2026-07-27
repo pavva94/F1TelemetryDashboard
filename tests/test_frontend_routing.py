@@ -31,6 +31,24 @@ def test_shared_router_loads_before_route_consumers() -> None:
 
     assert index.index('src="assets/routing.js"') < index.index('src="assets/app.js"')
     assert index.index('src="assets/routing.js"') < index.index('src="assets/season.js"')
+    assert index.index('src="assets/team-colors.js?v=20260727"') < index.index('src="assets/app.js"')
+    assert index.index('src="assets/team-colors.js?v=20260727"') < index.index('src="assets/season.js"')
+
+
+def test_official_team_palette_is_shared_by_both_analysis_pages() -> None:
+    palette = (FRONTEND / "team-colors.js").read_text()
+    app = (FRONTEND / "app.js").read_text()
+    season = (FRONTEND / "season.js").read_text()
+
+    for color in (
+        "#DC0000", "#C0C0C0", "#15151E", "#0A1B40", "#FFD700",
+        "#FF8700", "#005F41", "#005BA9", "#FF80BD", "#1868DB",
+        "#9C9FA2", "#01C00E", "#C8CED4", "#F50537", "#6C98FF",
+    ):
+        assert color in palette
+    assert "window.F1Teams" in palette
+    assert "teamColor(item.team)" in app
+    assert "entityColour(item.label, options.entityKey)" in season
 
 
 def test_season_frontend_polls_status_without_restarting_analysis() -> None:
