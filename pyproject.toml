@@ -24,6 +24,7 @@ dev = [
 [project.scripts]
 fastf1-lapdiff = "fastf1_lapdiff.cli:main"
 fastf1-lapdiff-web = "fastf1_lapdiff.web:main"
+fastf1-precompute-season = "fastf1_lapdiff.precompute_season:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

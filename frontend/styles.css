@@ -538,6 +538,13 @@ canvas {
   font-size: 14px;
 }
 
+.compact-explanation {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .compact-table {
   width: 100%;
   border-collapse: collapse;
@@ -1174,55 +1181,36 @@ body[data-route="season"] .race-search { display: none; }
 .season-heading p { margin: 0; color: var(--muted); max-width: 760px; line-height: 1.55; }
 .data-freshness { max-width: 320px; color: var(--muted); font-size: 0.78rem; text-align: right; }
 
-.season-filters {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(120px, 1fr));
-  gap: 14px;
+.season-picker {
+  display: flex;
   align-items: end;
-  padding: 22px;
+  gap: 12px;
+  width: fit-content;
+  min-width: min(100%, 330px);
+  padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 14px;
   background: var(--panel);
   box-shadow: 0 8px 24px rgba(19, 29, 25, 0.055);
 }
-
-.season-filters label { display: grid; gap: 6px; min-width: 0; }
-.season-filters label > span { color: var(--muted); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
-.season-filters select {
+.season-picker label {
+  display: grid;
+  flex: 1;
+  gap: 6px;
+  min-width: 130px;
+}
+.season-picker label > span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.season-picker select {
   width: 100%;
-  min-width: 0;
   border-color: var(--line);
   background: #fbfcfb;
   color: var(--ink);
-}
-.season-filters select[multiple] { min-height: 74px; }
-.season-filters .wide-control { grid-column: span 2; }
-.season-filters .check-control {
-  display: flex;
-  align-items: center;
-  align-self: end;
-  gap: 10px;
-  min-width: 0;
-  min-height: 44px;
-  padding: 0 4px;
-}
-.season-filters .check-control input {
-  flex: 0 0 18px;
-  width: 18px;
-  min-width: 18px;
-  height: 18px;
-  min-height: 18px;
-  margin: 0;
-  padding: 0;
-  accent-color: var(--accent);
-}
-.season-filters .check-control span {
-  min-width: 0;
-  color: var(--ink);
-  font-size: 0.78rem;
-  line-height: 1.25;
-  text-transform: none;
-  letter-spacing: 0;
 }
 .secondary, .export-button {
   border: 1px solid var(--line);
@@ -1275,6 +1263,56 @@ body[data-route="season"] .race-search { display: none; }
   font-weight: 750;
 }
 .season-section-nav a:hover, .season-section-nav a:focus-visible { color: var(--ink); background: var(--panel); }
+
+.page-guide {
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line));
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: color-mix(in srgb, var(--panel) 92%, var(--accent));
+}
+.page-guide summary {
+  cursor: pointer;
+  font-weight: 850;
+  color: var(--ink);
+}
+.page-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin-top: 14px;
+}
+.page-guide-grid p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .84rem;
+  line-height: 1.55;
+}
+.page-guide-grid strong { color: var(--ink); }
+.analysis-guide,
+.section-explanation {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 96%, var(--accent));
+  color: var(--muted);
+  font-size: .83rem;
+  line-height: 1.55;
+}
+.analysis-guide strong,
+.section-explanation strong { color: var(--ink); }
+.analysis-guide p,
+.section-explanation { margin: 0; }
+.analysis-guide p { margin: 5px 0 0; }
+.data-explanation {
+  margin: -2px 20px 14px;
+  color: var(--muted);
+  font-size: .78rem;
+  line-height: 1.5;
+}
+.data-explanation strong { color: var(--ink); }
+.race-hero .data-explanation,
+.summary-band .data-explanation { margin: 10px 0 0; }
+.comparison-shell > .analysis-guide { margin-bottom: 4px; }
 
 .season-content, .season-section { display: grid; gap: 22px; }
 .season-content { gap: 56px; }
@@ -1354,6 +1392,33 @@ body[data-route="season"] .race-search { display: none; }
 .season-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
 .season-table th button { all: unset; cursor: pointer; }
 .table-scroll { overflow: auto; max-width: 100%; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.table-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: .72rem;
+  line-height: 1.4;
+}
+.table-legend strong,
+.table-legend b { color: var(--ink); }
+.table-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  border-radius: 3px;
+}
 .method-badge {
   display: inline-flex; align-items: center; padding: 3px 6px;
   border: 1px solid var(--line); border-radius: 999px;
@@ -1383,6 +1448,7 @@ body[data-route="season"] .race-search { display: none; }
 .state-mechanical, .state-dsq { background: #b43b52 !important; color: white; }
 .state-incident, .state-dns { background: #b77a28 !important; color: white; }
 .state-classified { background: color-mix(in srgb, #52aa73 35%, transparent) !important; }
+.state-other { background: color-mix(in srgb, var(--muted) 22%, transparent) !important; }
 
 .race-history-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .race-history-card {
@@ -1444,10 +1510,19 @@ body[data-route="season"] .race-search { display: none; }
 }
 .season-chart-tooltip b { color: #fff; font-weight: 750; }
 
+@media (max-width: 1420px) {
+  .topbar {
+    grid-template-columns: minmax(280px, 1fr) auto;
+  }
+
+  .race-search {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 1100px) {
   .topbar { grid-template-columns: 1fr auto; }
   .race-search { grid-column: 1 / -1; }
-  .season-filters { grid-template-columns: repeat(3, minmax(120px, 1fr)); }
   .season-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .insight-grid, .race-history-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -1460,12 +1535,11 @@ body[data-route="season"] .race-search { display: none; }
   .season-page { gap: 18px; padding: 16px 14px 72px; }
   .season-heading { align-items: flex-start; flex-direction: column; padding: 22px 20px; border-radius: 14px; }
   .data-freshness { text-align: left; }
-  .season-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px; border-radius: 14px; }
+  .season-picker { width: 100%; }
   .season-section-nav { top: 158px; margin-inline: -4px; }
   .season-content { gap: 42px; }
   .season-section + .season-section { padding-top: 36px; }
-  .season-filters .wide-control { grid-column: span 2; }
-  .season-chart-grid, .insight-grid, .race-history-grid, .methodology-grid { grid-template-columns: 1fr; }
+  .season-chart-grid, .insight-grid, .race-history-grid, .methodology-grid, .page-guide-grid { grid-template-columns: 1fr; }
   .team-summary-grid { grid-template-columns: 1fr; }
   .season-card-grid { grid-template-columns: 1fr 1fr; }
   .season-chart-grid canvas { min-height: 270px; }
@@ -1473,6 +1547,951 @@ body[data-route="season"] .race-search { display: none; }
 
 @media (max-width: 460px) {
   .season-page { padding-inline: 10px; }
-  .season-filters, .season-card-grid { grid-template-columns: 1fr; }
-  .season-filters .wide-control { grid-column: auto; }
+  .season-picker { align-items: stretch; flex-direction: column; }
+  .season-card-grid { grid-template-columns: 1fr; }
+}
+
+/* 2026 race-engineering visual system */
+:root {
+  color-scheme: light;
+  --bg: #eceef1;
+  --ink: #15151e;
+  --muted: #626773;
+  --panel: #ffffff;
+  --line: #cfd2d8;
+  --line-strong: #aeb2ba;
+  --accent: #e10600;
+  --ref: #15151e;
+  --cmp: #e10600;
+  --delta: #1868db;
+  --gain: #008c45;
+  --loss: #dc0000;
+  --warn: #a85f00;
+  --carbon: #15151e;
+  --carbon-raised: #20212a;
+  --paper: #f7f7f8;
+  --shadow: 0 14px 34px rgba(21, 21, 30, 0.1);
+  --display-font: "Arial Narrow", "Roboto Condensed", "Helvetica Neue Condensed", sans-serif;
+  --body-font: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 152px;
+}
+
+body {
+  background:
+    linear-gradient(135deg, rgba(21, 21, 30, 0.025) 25%, transparent 25%) 0 0 / 18px 18px,
+    linear-gradient(315deg, rgba(21, 21, 30, 0.025) 25%, transparent 25%) 0 0 / 18px 18px,
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--body-font);
+  font-size: 16px;
+}
+
+button,
+select,
+input {
+  font-family: var(--body-font);
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+a:visited {
+  color: #75414f;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid rgba(225, 6, 0, 0.32);
+  outline-offset: 3px;
+}
+
+.shell {
+  position: relative;
+}
+
+.shell::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 20;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent) 0 30%, #ff6b00 30% 42%, #ffffff 42% 54%, var(--carbon) 54%);
+}
+
+.topbar {
+  top: 4px;
+  z-index: 12;
+  grid-template-columns: minmax(280px, 0.7fr) auto minmax(520px, 1.3fr);
+  gap: clamp(18px, 2vw, 34px);
+  min-height: 92px;
+  padding: 15px clamp(18px, 2.6vw, 40px);
+  border-bottom: 0;
+  background:
+    linear-gradient(108deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 46px),
+    var(--carbon);
+  box-shadow: 0 14px 30px rgba(10, 10, 14, 0.22);
+}
+
+.brand {
+  gap: 15px;
+  min-width: 0;
+}
+
+.mark {
+  position: relative;
+  width: 48px;
+  height: 34px;
+  flex: 0 0 48px;
+  border: 0;
+  transform: skew(-16deg);
+  background: var(--accent);
+  clip-path: polygon(0 0, 100% 0, 76% 38%, 100% 38%, 56% 100%, 0 100%, 25% 62%, 0 62%);
+}
+
+.mark::after {
+  content: "";
+  position: absolute;
+  inset: 7px 12px;
+  background: var(--carbon);
+  clip-path: polygon(0 0, 100% 0, 72% 40%, 100% 40%, 56% 100%, 0 100%, 28% 60%, 0 60%);
+}
+
+.brand-kicker {
+  display: block;
+  margin-bottom: 2px;
+  color: #9da1aa;
+  font-family: var(--display-font);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.brand h1,
+h2,
+h3,
+h4,
+.metric strong,
+.season-card strong {
+  font-family: var(--display-font);
+  font-stretch: condensed;
+}
+
+.brand h1 {
+  color: #ffffff;
+  font-size: clamp(19px, 1.5vw, 24px);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.brand p {
+  overflow: hidden;
+  margin-top: 5px;
+  color: #aeb1b8;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mode-navigation {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #42434c;
+  border-radius: 2px;
+  background: #20212a;
+  transform: skew(-10deg);
+}
+
+.mode-navigation a,
+.mode-navigation a:visited {
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 10px 19px;
+  border-radius: 0;
+  color: #b8bbc2;
+  font-family: var(--display-font);
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+  transform: skew(10deg);
+}
+
+.mode-navigation a:hover {
+  color: #ffffff;
+}
+
+.mode-navigation a.active,
+.mode-navigation a[aria-current="page"] {
+  color: #ffffff;
+  background: var(--accent);
+  box-shadow: 14px 0 0 var(--accent), -14px 0 0 var(--accent);
+}
+
+.race-search {
+  grid-template-columns: 104px minmax(180px, 1fr) minmax(170px, 0.8fr) 150px;
+  gap: 9px;
+}
+
+label {
+  color: #adb0b8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+select,
+input {
+  min-height: 44px;
+  border: 1px solid #454650;
+  border-radius: 2px;
+  background: #252630;
+  color: #ffffff;
+}
+
+.race-search select:hover,
+.race-search input:hover {
+  border-color: #777984;
+}
+
+.primary,
+.secondary,
+.export-button {
+  position: relative;
+  min-height: 44px;
+  border-radius: 2px;
+  font-family: var(--display-font);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: transform 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out;
+}
+
+.primary {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  box-shadow: inset -10px 0 0 rgba(0, 0, 0, 0.13);
+  clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+}
+
+.primary:hover,
+.secondary:hover,
+.export-button:hover {
+  transform: translateY(-2px);
+}
+
+.primary:active,
+.secondary:active,
+.export-button:active {
+  transform: translateY(1px);
+}
+
+.dashboard,
+.season-page {
+  width: min(100%, 1660px);
+  margin-inline: auto;
+}
+
+.dashboard {
+  gap: 22px;
+  padding: clamp(18px, 2.3vw, 38px) clamp(16px, 2.6vw, 42px) 96px;
+}
+
+.season-page {
+  gap: 22px;
+  padding: clamp(18px, 2.3vw, 38px) clamp(16px, 2.6vw, 42px) 96px;
+}
+
+.status {
+  min-height: 44px;
+  padding: 12px 16px;
+  border: 1px solid #c7cad0;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--muted);
+  font-size: 13px;
+  box-shadow: 0 8px 18px rgba(21, 21, 30, 0.045);
+}
+
+.status::before {
+  content: "●";
+  margin-right: 9px;
+  color: var(--gain);
+  font-size: 10px;
+}
+
+.status.error::before {
+  color: var(--loss);
+}
+
+.page-guide {
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
+}
+
+.page-guide summary {
+  color: var(--ink);
+  font-family: var(--display-font);
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.session-workspace {
+  grid-template-columns: 214px minmax(0, 1fr);
+  gap: 22px;
+}
+
+.session-rail {
+  top: 116px;
+  gap: 12px;
+  padding: 16px 12px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--carbon);
+  box-shadow: 0 16px 30px rgba(21, 21, 30, 0.14);
+}
+
+.session-rail .eyebrow {
+  padding-inline: 5px;
+  color: #989ba4;
+}
+
+.session-option {
+  min-height: 46px;
+  padding: 9px 11px;
+  border: 1px solid #3b3c45;
+  border-left: 0;
+  border-radius: 1px;
+  background: #20212a;
+  color: #ffffff;
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+}
+
+.session-option:hover {
+  border-color: #70727b;
+  background: #2a2b35;
+}
+
+.session-option.active {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.session-option.completed:not(.active)::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #35b86b;
+}
+
+.session-option small,
+.session-option.active small {
+  color: #bfc1c7;
+}
+
+.panel,
+.race-hero,
+.summary-band,
+.comparison-controls,
+.season-card,
+.race-history-card,
+.methodology-panel,
+.table-scroll,
+.analysis-note,
+.season-picker {
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.panel {
+  overflow: hidden;
+}
+
+.panel::before {
+  content: "";
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent) 0 58px, var(--carbon) 58px 110px, transparent 110px);
+}
+
+.panel-head {
+  min-height: 58px;
+  padding: 15px 20px;
+  border-bottom-color: var(--line);
+}
+
+.panel-head h3 {
+  font-size: 17px;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.race-hero,
+.summary-band,
+.season-heading {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-radius: 2px;
+  background:
+    linear-gradient(112deg, transparent 0 74%, rgba(255, 255, 255, 0.045) 74% 75%, transparent 75%),
+    var(--carbon);
+  color: #ffffff;
+  box-shadow: 0 18px 38px rgba(21, 21, 30, 0.17);
+  clip-path: polygon(0 0, calc(100% - 26px) 0, 100% 26px, 100% 100%, 26px 100%, 0 calc(100% - 26px));
+}
+
+.race-hero {
+  border-top: 0;
+  padding: clamp(22px, 2.6vw, 36px);
+}
+
+.race-hero::after,
+.summary-band::after,
+.season-heading::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--accent);
+}
+
+.race-hero h2,
+.summary-band h2,
+.season-heading h2 {
+  color: #ffffff;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+  text-transform: uppercase;
+}
+
+.race-hero h2,
+.season-heading h2 {
+  font-size: clamp(34px, 4.4vw, 66px);
+}
+
+.race-hero p,
+.summary-band p,
+.season-heading p,
+.race-hero .data-explanation,
+.summary-band .data-explanation,
+.season-heading .data-freshness {
+  color: #b9bbc3;
+}
+
+.race-hero .data-explanation strong,
+.summary-band .data-explanation strong {
+  color: #ffffff;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-family: var(--display-font);
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.metrics {
+  gap: 8px;
+}
+
+.metric {
+  position: relative;
+  padding: 15px;
+  overflow: hidden;
+  border: 1px solid #454650;
+  border-radius: 1px;
+  background: #20212a;
+}
+
+.metric::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.metric span {
+  color: #999ca5;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metric strong {
+  color: #ffffff;
+  font-size: clamp(18px, 1.5vw, 24px);
+  font-style: italic;
+  font-weight: 900;
+}
+
+.section-title h2,
+.season-section > .section-title h2 {
+  font-size: clamp(27px, 2.8vw, 42px);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.section-title p {
+  font-size: 14px;
+}
+
+.comparison-controls {
+  gap: 10px;
+  padding: 18px;
+  border-top: 3px solid var(--carbon);
+}
+
+.comparison-controls label {
+  color: var(--muted);
+}
+
+.comparison-controls select,
+.season-picker select {
+  border-color: var(--line-strong);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.analysis-guide,
+.section-explanation,
+.table-legend {
+  border-radius: 2px;
+  background: #f3f4f6;
+}
+
+.data-explanation,
+.compact-explanation,
+.insight-notes {
+  color: #666b75;
+}
+
+.standings-table,
+.season-table,
+.compact-table {
+  font-variant-numeric: tabular-nums;
+}
+
+.standings-table th,
+.season-table th,
+.compact-table th {
+  background: #f0f1f3;
+  color: #5b606b;
+  font-family: var(--display-font);
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.standings-table tbody tr,
+.season-table tbody tr {
+  transition: background-color 120ms ease-out;
+}
+
+.standings-table tbody tr:hover,
+.season-table tbody tr:hover {
+  background: color-mix(in srgb, var(--team-color, var(--accent)) 8%, white);
+}
+
+.standings-table tbody tr td:first-child {
+  box-shadow: inset 4px 0 0 var(--team-color, var(--line-strong));
+  font-family: var(--display-font);
+  font-size: 16px;
+  font-style: italic;
+  font-weight: 900;
+}
+
+.team-label {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink) !important;
+  font-size: inherit !important;
+}
+
+.team-label i {
+  width: 4px;
+  height: 18px;
+  flex: 0 0 4px;
+  background: var(--team-color, var(--line-strong));
+  transform: skew(-12deg);
+}
+
+.season-heading {
+  align-items: center;
+  min-height: 210px;
+  padding: clamp(28px, 4vw, 58px);
+}
+
+.season-heading .data-freshness {
+  max-width: 340px;
+  padding: 13px 16px;
+  border: 1px solid #42434c;
+  background: #20212a;
+  text-align: left;
+}
+
+.season-picker {
+  padding: 14px;
+  border-top: 3px solid var(--accent);
+}
+
+.season-section-nav {
+  top: 112px;
+  gap: 0;
+  padding: 5px;
+  border-radius: 2px;
+  border-color: #373842;
+  background: rgba(21, 21, 30, 0.96);
+}
+
+.season-section-nav a,
+.season-section-nav a:visited {
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 1px;
+  color: #b4b7be;
+  font-family: var(--display-font);
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.season-section-nav a:hover,
+.season-section-nav a:focus-visible {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.season-content {
+  gap: 64px;
+}
+
+.season-section + .season-section {
+  border-top: 2px solid var(--carbon);
+}
+
+.season-card-grid {
+  gap: 12px;
+}
+
+.season-card {
+  position: relative;
+  min-height: 150px;
+  padding: 22px 20px 19px;
+  overflow: hidden;
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.season-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: var(--accent);
+}
+
+.season-card:hover,
+.race-history-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 36px rgba(21, 21, 30, 0.15);
+}
+
+.season-card span {
+  font-family: var(--display-font);
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.season-card strong {
+  font-size: 24px;
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.season-card a,
+.season-card a:visited {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.insight-grid {
+  gap: 12px;
+}
+
+.insight-card,
+.analysis-note {
+  border: 1px solid var(--line);
+  border-left: 0;
+  border-radius: 2px;
+  background: #f6f6f7;
+  box-shadow: none;
+}
+
+.insight-card {
+  position: relative;
+  padding-top: 24px;
+}
+
+.insight-card::before {
+  content: "ENGINEERING NOTE";
+  position: absolute;
+  inset: 9px auto auto 18px;
+  color: var(--accent);
+  font-family: var(--display-font);
+  font-size: 8px;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+}
+
+.table-scroll {
+  border-radius: 2px;
+}
+
+.season-table th,
+.season-table td {
+  padding: 12px 13px;
+}
+
+.season-table tbody tr[style*="--team-color"] td:first-child {
+  box-shadow: inset 4px 0 0 var(--team-color);
+}
+
+.heat-cell {
+  border-radius: 1px;
+}
+
+.method-badge {
+  border-radius: 2px;
+  font-family: var(--display-font);
+  font-weight: 900;
+}
+
+.race-history-grid {
+  gap: 12px;
+}
+
+.race-history-card {
+  border-top: 4px solid var(--accent);
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.race-history-card .round {
+  color: var(--accent);
+  font-family: var(--display-font);
+  font-style: italic;
+}
+
+.chart-tooltip,
+.trace-tooltip,
+.season-chart-tooltip {
+  border: 1px solid #3f4049;
+  border-radius: 2px;
+  background: rgba(21, 21, 30, 0.97);
+  color: #ffffff;
+  box-shadow: 0 18px 38px rgba(10, 10, 14, 0.28);
+}
+
+.chart-tooltip span,
+.trace-tooltip span,
+.season-chart-tooltip span {
+  color: #b9bbc3;
+}
+
+.chart-tooltip strong,
+.trace-tooltip strong {
+  color: #ffffff;
+}
+
+@media (max-width: 1180px) {
+  .topbar {
+    position: static;
+    grid-template-columns: 1fr auto;
+  }
+
+  .season-section-nav {
+    top: 8px;
+  }
+}
+
+@media (max-width: 720px) {
+  html {
+    scroll-padding-top: 90px;
+  }
+
+  .topbar {
+    padding: 17px 14px 14px;
+  }
+
+  .brand {
+    width: calc(100% - 4px);
+  }
+
+  .brand p {
+    max-width: 270px;
+  }
+
+  .mode-navigation {
+    order: 3;
+    width: 100%;
+  }
+
+  .dashboard,
+  .season-page {
+    padding: 14px 10px 72px;
+  }
+
+  .race-hero,
+  .summary-band,
+  .season-heading {
+    clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+  }
+
+  .race-hero,
+  .season-heading {
+    padding: 25px 19px;
+  }
+
+  .race-hero h2,
+  .season-heading h2 {
+    font-size: clamp(32px, 11vw, 48px);
+  }
+
+  .metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .metric {
+    min-height: 92px;
+  }
+
+  .season-section-nav {
+    top: 8px;
+    margin-inline: 0;
+  }
+
+  .season-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .section-title .export-button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1420px) {
+  .topbar {
+    grid-template-columns: minmax(280px, 1fr) auto;
+  }
+
+  .race-search {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    width: 100%;
+  }
+
+  .race-search {
+    width: 100%;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .session-workspace,
+  .race-hero,
+  .summary-band,
+  .race-grid,
+  .race-detail-grid,
+  .sector-grid,
+  .context-grid,
+  .engineering-grid,
+  .trace-layout,
+  .detail-layout,
+  .comparison-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-rail {
+    position: static;
+  }
+
+  .race-hero,
+  .summary-band,
+  .panel,
+  .comparison-shell,
+  .session-content {
+    min-width: 0;
+  }
+
+  .page-guide-grid {
+    grid-template-columns: 1fr;
+  }
 }

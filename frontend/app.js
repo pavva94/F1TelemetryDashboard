@@ -76,7 +76,7 @@ let pitStopHoverIndex = null;
 let teamPaceHoverIndex = null;
 let findingTelemetryHoverIndex = null;
 
-if (window.location.pathname.replace(/\/+$/, "") !== "/season") {
+if (window.FastF1Routing.route() !== "season") {
   init();
 }
 
@@ -246,7 +246,7 @@ async function loadSessionSummary(sessionName) {
   routeState.set("year", els.season.value);
   routeState.set("event", els.event.value);
   routeState.set("session", sessionName);
-  history.replaceState({ route: "race" }, "", `/race?${routeState}`);
+  history.replaceState({ route: "race" }, "", window.FastF1Routing.url("race", routeState));
   setStatus(`Loading ${sessionName} analysis...`);
   els.loadRace.disabled = true;
   renderSessionRail();
@@ -367,10 +367,10 @@ function renderRaceSummary(race) {
 
 function renderStandings(standings) {
   els.standings.innerHTML = standings
-    .map((item) => `<tr>
+    .map((item) => `<tr style="--team-color:${teamColor(item.team)}">
       <td>${item.position ?? "--"}</td>
       <td><strong>${escapeHtml(item.driver || "--")}</strong>${item.fullName ? `<span>${escapeHtml(item.fullName)}</span>` : ""}</td>
-      <td>${escapeHtml(item.team || "--")}</td>
+      <td><span class="team-label"><i aria-hidden="true"></i>${escapeHtml(item.team || "--")}</span></td>
       <td>${item.grid ?? "--"}</td>
       <td>${escapeHtml(item.time || item.status || "--")}</td>
       <td>${isFiniteNumber(item.points) ? item.points : "--"}</td>
@@ -650,6 +650,7 @@ function renderRaceInsightTables(insights) {
   els.raceInsightTables.innerHTML = `
     <div class="insight-block">
       <h4>Tyre Compound Pace</h4>
+      <p class="compact-explanation">Average is the mean of usable laps on that compound; Best is its quickest lap. Lower times are faster, but drivers, fuel loads and stint ages are mixed together.</p>
       <table class="compact-table">
         <thead><tr><th>Compound</th><th>Avg</th><th>Best</th><th>Laps</th></tr></thead>
         <tbody>${tyres.map((item) => `<tr><td>${escapeHtml(item.compound)}</td><td>${clock(item.averagePace)}</td><td>${clock(item.bestLapTime)}</td><td>${item.lapCount}</td></tr>`).join("") || emptyRow(4)}</tbody>
@@ -657,6 +658,7 @@ function renderRaceInsightTables(insights) {
     </div>
     <div class="insight-block">
       <h4>Driver Stints</h4>
+      <p class="compact-explanation">A stint is consecutive laps on one set of tyres. The lap range shows its length and Avg shows representative pace; compare similar compounds and stint phases.</p>
       <table class="compact-table">
         <thead><tr><th>Driver</th><th>Stint</th><th>Tyre</th><th>Laps</th><th>Avg</th></tr></thead>
         <tbody>${stints.map((item) => `<tr><td>${escapeHtml(item.driver)}</td><td>${item.stint}</td><td>${escapeHtml(item.compound || "--")}</td><td>${item.startLap ?? "--"}-${item.endLap ?? "--"}</td><td>${clock(item.averagePace)}</td></tr>`).join("") || emptyRow(5)}</tbody>
@@ -664,6 +666,7 @@ function renderRaceInsightTables(insights) {
     </div>
     <div class="insight-block">
       <h4>Pit Stops</h4>
+      <p class="compact-explanation">Lane is the measured time from pit entry to pit exit, not only the stationary tyre change. Lower is quicker; a dash means timing was unavailable.</p>
       <table class="compact-table">
         <thead><tr><th>Driver</th><th>Lap</th><th>Tyre</th><th>Lane</th></tr></thead>
         <tbody>${pits.map((item) => `<tr><td>${escapeHtml(item.driver)}</td><td>${item.lap ?? "--"}</td><td>${escapeHtml([item.compoundBefore, item.compoundAfter].filter(Boolean).join(" → ") || "--")}</td><td>${item.pitLaneTime ? `${item.pitLaneTime.toFixed(2)} s` : "--"}</td></tr>`).join("") || emptyRow(4)}</tbody>
@@ -1089,6 +1092,7 @@ function drawPaceViolin(drivers) {
   }
 
   data.forEach((driver, index) => {
+    const driverTeamColor = teamColor(driver.team);
     const times = driver.laps.map((lap) => lap.time).filter(isFiniteNumber).sort((a, b) => a - b);
     const x = pad.left + columnW * index + columnW / 2;
     const maxHalf = Math.max(5, columnW * 0.35);
@@ -1108,9 +1112,9 @@ function drawPaceViolin(drivers) {
       ctx.lineTo(x + half, y);
     });
     ctx.closePath();
-    ctx.fillStyle = "rgba(10, 124, 134, 0.18)";
+    ctx.fillStyle = hexToRgba(driverTeamColor, 0.18);
     ctx.fill();
-    ctx.strokeStyle = css("--ref");
+    ctx.strokeStyle = driverTeamColor;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
@@ -1130,7 +1134,7 @@ function drawPaceViolin(drivers) {
       ctx.lineTo(x + maxHalf * 0.62, stdBottomY);
       ctx.stroke();
     }
-    ctx.strokeStyle = css("--cmp");
+    ctx.strokeStyle = driverTeamColor;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(x - maxHalf, avgY);
@@ -1288,7 +1292,8 @@ function drawHorizontalRanking(canvas, items, options) {
     const barW = scale(item[options.valueKey], best, worst || best + 1, plotRight - pad.left, 18);
     ctx.fillStyle = "#26312e";
     ctx.fillText(clipLabel(ctx, item[options.labelKey] || "--", pad.left - 18), 12, y + rowH * 0.45);
-    ctx.fillStyle = index === 0 ? css("--gain") : options.color;
+    const itemColor = item.team ? teamColor(item.team) : options.color;
+    ctx.fillStyle = itemColor;
     ctx.fillRect(pad.left, y, Math.max(8, barW), Math.max(10, rowH * 0.45));
     const valueLabel = index === 0 ? clock(item[options.valueKey]) : `+${delta.toFixed(3)} s`;
     const valueX = pad.left + Math.max(12, barW) + 8;
@@ -1645,8 +1650,7 @@ function drawPositionChart(race) {
   const maxLap = Math.max(...allLaps.map((item) => item.lap));
   const maxPosition = Math.max(...allLaps.map((item) => item.position), ...history.map((driver) => driver.finalPosition || 0));
   const pad = { left: 54, right: 130, top: 24, bottom: 38 };
-  const colors = ["#0a7c86", "#d23b3b", "#2f5fca", "#157f4f", "#966014", "#6f4bb3", "#c35b8d", "#2f7670", "#7f6b21", "#59636f"];
-  const driverColors = new Map(history.map((driver, index) => [driver.driver, colors[index % colors.length]]));
+  const driverColors = new Map(history.map((driver) => [driver.driver, teamColor(driver.team)]));
 
   ctx.strokeStyle = "#d8dfdc";
   ctx.fillStyle = "#63706c";
@@ -1670,10 +1674,10 @@ function drawPositionChart(race) {
   }
   ctx.fillText("Lap", w - pad.right - 12, h - 12);
 
-  history.forEach((driver, index) => {
+  history.forEach((driver) => {
     const laps = (driver.laps || []).filter((item) => isFiniteNumber(item.lap) && isFiniteNumber(item.position));
     if (laps.length < 2) return;
-    const color = colors[index % colors.length];
+    const color = driverColors.get(driver.driver);
     ctx.beginPath();
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
@@ -2342,6 +2346,17 @@ function isFiniteNumber(value) {
 
 function css(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function teamColor(team, variant = "primary") {
+  return window.F1Teams?.color(team, variant) || "#6E7480";
+}
+
+function hexToRgba(hex, alpha) {
+  const value = String(hex).replace("#", "");
+  const normalized = value.length === 3 ? value.split("").map((char) => char + char).join("") : value;
+  const number = Number.parseInt(normalized, 16);
+  return `rgba(${(number >> 16) & 255}, ${(number >> 8) & 255}, ${number & 255}, ${alpha})`;
 }
 
 function escapeHtml(value) {

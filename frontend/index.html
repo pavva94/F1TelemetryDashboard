@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>FastF1 Race Engineering Dashboard</title>
+    <title>FastF1 Season and Race Engineering Dashboard</title>
     <link rel="stylesheet" href="assets/styles.css" />
   </head>
   <body>
@@ -12,14 +12,15 @@
         <div class="brand">
           <span class="mark" aria-hidden="true"></span>
           <div>
-            <h1>FastF1 Race Engineering</h1>
-            <p>Race summary first, lap comparison when you need the detail</p>
+            <span class="brand-kicker">Race Intelligence // Live Data</span>
+            <h1>FastF1 Engineering</h1>
+            <p>Season performance · Race execution · Lap telemetry</p>
           </div>
         </div>
 
         <nav class="mode-navigation" aria-label="Primary analysis">
-          <a href="/race" data-route="race" aria-current="page">Race Analysis</a>
-          <a href="/season" data-route="season">Season Analysis</a>
+          <a href="?view=season" data-route="season" aria-current="page">Season Analysis</a>
+          <a href="?view=race" data-route="race">Race Analysis</a>
         </nav>
 
         <form id="race-form" class="race-search">
@@ -39,8 +40,17 @@
         </form>
       </header>
 
-      <section id="race-page" class="dashboard analysis-page" aria-live="polite">
+      <section id="race-page" class="dashboard analysis-page" aria-live="polite" hidden>
         <div id="status" class="status">Select a season and event to load its sessions.</div>
+        <details class="page-guide" open>
+          <summary>How to use Race Analysis</summary>
+          <div class="page-guide-grid">
+            <p><strong>1. Load a weekend.</strong> Choose a season and race at the top, then select a session from the left rail.</p>
+            <p><strong>2. Read the session first.</strong> Classification, position, pace, sectors, tyres and pit stops describe the whole field.</p>
+            <p><strong>3. Compare two laps.</strong> In Telemetry Detail, choose the reference first and the lap you want to compare against it second.</p>
+            <p><strong>Delta rule.</strong> A positive delta means the compared driver took longer than the reference; a negative delta means the compared driver was quicker.</p>
+          </div>
+        </details>
 
         <div class="session-workspace">
           <aside class="session-rail" aria-label="Weekend sessions">
@@ -54,6 +64,7 @@
             <span class="eyebrow" id="overview-eyebrow">Session Overview</span>
             <h2 id="race-title">No session loaded</h2>
             <p id="race-summary-text">Choose a year and event above. Select a completed session to inspect its data.</p>
+            <p class="data-explanation"><strong>What this summary shows:</strong> the official session result and basic timing coverage. “Timed laps” is the number of laps with a recorded lap time, not the scheduled race distance.</p>
           </div>
           <div class="metrics race-metrics">
             <div class="metric">
@@ -80,6 +91,7 @@
             <div class="panel-head">
               <h3 id="standings-heading">Classification</h3>
             </div>
+            <p class="data-explanation"><strong>How to read:</strong> the official finishing or session order. Grid is the starting position; Time / Status is the gap, retirement status, or classification; Pts are championship points awarded.</p>
             <div class="standings-wrap">
               <table class="standings-table">
                 <thead>
@@ -101,6 +113,7 @@
             <div class="panel-head">
               <h3>Position By Lap</h3>
             </div>
+            <p class="data-explanation"><strong>How to read:</strong> each line follows one driver’s running position. The top of the chart is first place. Moves can come from overtakes, pit stops, retirements, or timing-order changes; hover a lap to inspect the field.</p>
             <canvas id="position-chart" width="760" height="520"></canvas>
             <div id="position-tooltip" class="chart-tooltip position-tooltip" hidden></div>
           </div>
@@ -111,6 +124,7 @@
             <div class="panel-head">
               <h3>Driver Average Pace Distribution</h3>
             </div>
+            <p class="data-explanation"><strong>How to read:</strong> lower lap times are faster. Each shape shows the spread of a driver’s representative laps, while the average marker shows their central pace. A narrow shape suggests consistent lap times; compare only drivers with meaningful lap samples.</p>
             <div class="chart-surface">
               <canvas id="pace-violin-chart" width="1100" height="520"></canvas>
               <div id="pace-violin-tooltip" class="chart-tooltip" hidden></div>
@@ -121,6 +135,7 @@
             <div class="panel-head">
               <h3>Team Pace</h3>
             </div>
+            <p class="data-explanation"><strong>How to read:</strong> teams are ranked by the average of their usable driver laps. Shorter times are faster. This describes race pace in this session, not the official finishing order.</p>
             <div class="chart-surface">
               <canvas id="team-pace-chart" width="720" height="440"></canvas>
               <div id="team-pace-tooltip" class="chart-tooltip" hidden></div>
@@ -133,18 +148,21 @@
             <div class="panel-head">
               <h3>Fastest Sector 1</h3>
             </div>
+            <p class="data-explanation"><strong>How to read:</strong> each driver’s single quickest recorded first sector. A shorter bar and lower time are better; sectors may come from different laps.</p>
             <canvas id="sector1-chart" width="540" height="420"></canvas>
           </div>
           <div class="panel">
             <div class="panel-head">
               <h3>Fastest Sector 2</h3>
             </div>
+            <p class="data-explanation"><strong>How to read:</strong> each driver’s single quickest recorded middle sector. Lower is faster; this is not necessarily part of the driver’s fastest complete lap.</p>
             <canvas id="sector2-chart" width="540" height="420"></canvas>
           </div>
           <div class="panel">
             <div class="panel-head">
               <h3>Fastest Sector 3</h3>
             </div>
+            <p class="data-explanation"><strong>How to read:</strong> each driver’s single quickest recorded final sector. Lower is faster; combining the three best sectors gives a theoretical lap, not an actual lap.</p>
             <canvas id="sector3-chart" width="540" height="420"></canvas>
           </div>
         </section>
@@ -154,6 +172,7 @@
             <div class="panel-head">
               <h3>Session Pace Trend</h3>
             </div>
+            <p class="data-explanation"><strong>How to read:</strong> lap number runs left to right and lap time runs vertically, with lower times faster. The median line shows typical field pace; the best line shows the quickest lap. Changes can reflect fuel burn, tyres, traffic, weather, or safety-car periods—not only car performance.</p>
             <div class="chart-surface">
               <canvas id="pace-trend-chart" width="760" height="440"></canvas>
               <div id="pace-trend-tooltip" class="chart-tooltip" hidden></div>
@@ -164,6 +183,7 @@
             <div class="panel-head">
               <h3 id="tyre-heading">Tyres, Stints, And Pit Stops</h3>
             </div>
+            <p class="data-explanation"><strong>How to read:</strong> the stint timeline shows which tyre each driver used over the laps. The pit-stop distribution below compares measured time in the pit lane; lower is quicker, but safety-car timing and pit-lane conditions can affect the number.</p>
             <div class="chart-surface">
               <canvas id="stint-timeline-chart" width="760" height="440"></canvas>
               <div id="stint-tooltip" class="chart-tooltip" hidden></div>
@@ -183,6 +203,10 @@
               <h2>Telemetry Detail</h2>
             </div>
             <p>Compare best laps from the active session or choose two different sessions.</p>
+          </div>
+          <div class="analysis-guide">
+            <strong>How comparison works</strong>
+            <p>The reference driver is the baseline. The dashboard aligns both selected laps by distance so braking, speed, throttle, gear and elapsed-time differences can be compared at the same place on track. Use Validity and Confidence before drawing a conclusion: different tyres, weather, traffic or sessions reduce how directly the laps can be compared.</p>
           </div>
 
           <form id="comparison-form" class="comparison-controls">
@@ -214,6 +238,7 @@
               <span class="eyebrow">Selection</span>
               <h2 id="selection-title">No comparison loaded</h2>
               <p id="summary-text">Load a race, choose comparison drivers, and run the telemetry analysis.</p>
+              <p class="data-explanation"><strong>How to read:</strong> Total delta is compared lap time minus reference lap time. Positive means the compared lap was slower; negative means it was faster. Validity warns when the two laps are not directly comparable.</p>
             </div>
             <div class="metrics">
               <div class="metric">
@@ -240,12 +265,14 @@
               <div class="panel-head">
                 <h3>Sector Delta</h3>
               </div>
+              <p class="data-explanation"><strong>How to read:</strong> the total lap-time difference split into the three official sectors. The sign follows the comparison rule above; use it to locate where most of the overall gap was created.</p>
               <div id="sector-bars" class="sector-bars"></div>
             </div>
             <div class="panel">
               <div class="panel-head">
                 <h3>Tyre And Weather Context</h3>
               </div>
+              <p class="data-explanation"><strong>Why it matters:</strong> tyre compound, tyre age, track temperature, rain and wind can change lap time independently of driver or car performance. Treat large context differences as a reason for caution.</p>
               <ul id="context-list" class="context-list"></ul>
             </div>
           </section>
@@ -255,12 +282,14 @@
               <div class="panel-head">
                 <h3>Performance Fingerprint</h3>
               </div>
+              <p class="data-explanation"><strong>How to read:</strong> the lap-time delta is grouped by track-section type. Longer bars contributed more to the gap. The driver name beside each bar identifies who was quicker in that area; this is evidence of where time changed, not proof of why.</p>
               <div id="fingerprint" class="fingerprint"></div>
             </div>
             <div class="panel">
               <div class="panel-head">
                 <h3>Evidence Boundary</h3>
               </div>
+              <p class="data-explanation"><strong>How to read:</strong> Direct values come from timing or telemetry; Derived values are calculated from them; Heuristic values are informed estimates; Excluded items cannot be supported by the available FastF1 data.</p>
               <div id="data-scope" class="data-scope"></div>
             </div>
           </section>
@@ -269,6 +298,7 @@
             <div class="panel-head">
               <h3>Engineering Section Metrics</h3>
             </div>
+            <p class="data-explanation"><strong>How to read:</strong> each row is a track section. Time is compared minus reference; positive Exit or Top speed means the compared driver was faster at that point. Brake and DRS show differences in active distance, Gear shows the modal gear change, and Confidence indicates evidence strength.</p>
             <div class="metric-table-wrap">
               <table class="metric-table">
                 <thead>
@@ -300,6 +330,7 @@
                   <span><i class="delta"></i>Delta</span>
                 </div>
               </div>
+              <p class="data-explanation"><strong>How to read:</strong> distance runs left to right. Compare speed, throttle, brake, gear and RPM traces at the same track location. The delta-time trace accumulates the gap: rising means the compared driver is losing time; falling means they are gaining. Hover for exact values.</p>
               <canvas id="trace-canvas" width="1100" height="420"></canvas>
               <div id="trace-tooltip" class="trace-tooltip" hidden></div>
             </div>
@@ -307,6 +338,7 @@
               <div class="panel-head">
                 <h3>Track Map</h3>
               </div>
+              <p class="data-explanation"><strong>How to read:</strong> highlighted sections locate the detected gains and losses on the circuit. Use the map for location; use the telemetry and selected finding for the evidence behind each highlight.</p>
               <canvas id="map-canvas" width="480" height="420"></canvas>
             </div>
           </section>
@@ -322,12 +354,14 @@
                   <button class="tab" type="button" data-filter="heuristic">Heuristics</button>
                 </div>
               </div>
+              <p class="data-explanation"><strong>How to use:</strong> choose a finding to inspect its local telemetry and interpretation. Gains and losses are from the compared driver’s perspective; “heuristic” means the cause is suggested, not directly measured.</p>
               <div id="detections" class="detections"></div>
             </div>
             <div class="panel">
               <div class="panel-head">
                 <h3>Selected Finding</h3>
               </div>
+              <p class="data-explanation"><strong>How to read:</strong> this expands the selected finding with the driver who was quicker, estimated time impact, evidence, confidence and a zoomed telemetry chart. Read the caveats before treating an interpretation as a cause.</p>
               <div id="finding-detail" class="finding-detail">
                 Select a finding to inspect evidence and interpretation.
               </div>
@@ -338,7 +372,7 @@
         </section>
       </section>
 
-      <section id="season-page" class="season-page analysis-page" aria-live="polite" hidden>
+      <section id="season-page" class="season-page analysis-page" aria-live="polite">
         <header class="season-heading">
           <div>
             <span class="eyebrow">Season Analysis</span>
@@ -348,69 +382,34 @@
           <div id="season-freshness" class="data-freshness">Choose a season to build the analysis.</div>
         </header>
 
-        <form id="season-filters" class="season-filters">
+        <details class="page-guide" open>
+          <summary>How to use Season Analysis</summary>
+          <div class="page-guide-grid">
+            <p><strong>Choose a season.</strong> The page shows every available completed round, team and driver using one consistent view.</p>
+            <p><strong>Follow the story.</strong> Start with Overview, then use the section bar to move through championship, pace, development, teams, drivers and operations.</p>
+            <p><strong>Comparison rule.</strong> Pace is shown as the percentage gap to the fastest entry at each event. Lower is better and 0% is the benchmark.</p>
+            <p><strong>Read confidence with the number.</strong> Low sample sizes, wet races and missing timing reduce confidence. Hover interactive charts for exact values and open Methodology for formulas.</p>
+          </div>
+        </details>
+
+        <form id="season-filters" class="season-picker">
           <label><span>Season</span><select id="season-year"></select></label>
-          <label><span>Start round</span><select id="season-start-round"></select></label>
-          <label><span>End round</span><select id="season-end-round"></select></label>
-          <label><span>Quick range</span>
-            <select id="season-quick-range">
-              <option value="custom">Custom range</option>
-              <option value="full" selected>Full available season</option>
-              <option value="last3">Last 3 rounds</option>
-              <option value="last5">Last 5 rounds</option>
-              <option value="firstHalf">First half</option>
-              <option value="secondHalf">Second half</option>
-              <option value="beforeBreak">Before summer break</option>
-              <option value="afterBreak">After summer break</option>
-            </select>
-          </label>
-          <label><span>Session</span>
-            <select id="season-session">
-              <option value="combined">Combined</option>
-              <option value="qualifying">Qualifying</option>
-              <option value="race">Race</option>
-              <option value="sprint">Sprint</option>
-            </select>
-          </label>
-          <label><span>Conditions</span>
-            <select id="season-conditions">
-              <option value="all">All conditions</option>
-              <option value="dry">Dry only</option>
-              <option value="wet">Wet only</option>
-            </select>
-          </label>
-          <label><span>Values</span>
-            <select id="season-value-kind">
-              <option value="observed">Observed values</option>
-              <option value="adjusted">Adjusted values</option>
-            </select>
-          </label>
-          <label><span>Reference</span>
-            <select id="season-reference">
-              <option value="fastest">Relative to fastest</option>
-              <option value="average">Relative to season average</option>
-              <option value="absolute">Absolute values</option>
-            </select>
-          </label>
-          <label><span>Analysis level</span>
-            <select id="season-level">
-              <option value="team">Team level</option>
-              <option value="driver">Driver level</option>
-            </select>
-          </label>
-          <label><span>Rolling window</span>
-            <select id="season-rolling">
-              <option value="1">No rolling average</option>
-              <option value="3">3 rounds</option>
-              <option value="5">5 rounds</option>
-            </select>
-          </label>
-          <label class="wide-control"><span>Teams</span><select id="season-teams" multiple aria-label="Teams; leave empty for all"></select></label>
-          <label class="wide-control"><span>Drivers</span><select id="season-drivers" multiple aria-label="Drivers; leave empty for all"></select></label>
-          <label class="check-control"><input id="season-sprints" type="checkbox" checked><span>Include sprint points</span></label>
-          <label class="check-control"><input id="season-classified" type="checkbox" checked><span>Include non-classified</span></label>
-          <button class="primary" type="submit">Apply filters</button>
-          <button id="season-reset" class="secondary" type="button">Reset</button>
+          <button class="primary" type="submit">Show season</button>
+          <div class="season-defaults" hidden aria-hidden="true">
+            <select id="season-start-round" aria-label="Start round"></select>
+            <select id="season-end-round" aria-label="End round"></select>
+            <select id="season-quick-range" aria-label="Quick range"><option value="full">Full available season</option></select>
+            <select id="season-session" aria-label="Session"><option value="combined">Combined</option></select>
+            <select id="season-conditions" aria-label="Conditions"><option value="all">All conditions</option></select>
+            <select id="season-value-kind" aria-label="Values"><option value="observed">Observed values</option></select>
+            <select id="season-reference" aria-label="Reference"><option value="fastest">Relative to fastest</option></select>
+            <select id="season-level" aria-label="Analysis level"><option value="team">Team level</option></select>
+            <select id="season-rolling" aria-label="Rolling window"><option value="1">No rolling average</option></select>
+            <select id="season-teams" multiple aria-label="All teams"></select>
+            <select id="season-drivers" multiple aria-label="All drivers"></select>
+            <input id="season-sprints" type="checkbox" checked>
+            <input id="season-classified" type="checkbox" checked>
+          </div>
         </form>
 
         <div id="season-status" class="status">Season analysis has not been loaded.</div>
@@ -424,16 +423,105 @@
         </nav>
 
         <div id="season-content" class="season-content" hidden>
-          <section id="overview" class="season-section"><div class="section-title"><div><span class="eyebrow">Season status</span><h2>Overview</h2></div><button class="export-button" data-export="overview">Export CSV</button></div><div id="season-summary-cards" class="season-card-grid"></div><div id="season-insights" class="insight-grid"></div></section>
-          <section id="championship" class="season-section"><div class="section-title"><div><span class="eyebrow">Points and position</span><h2>Championship evolution</h2></div><button class="export-button" data-export="championship">Export CSV</button></div><div class="season-chart-grid"><article class="panel"><div class="panel-head"><h3>Cumulative points</h3></div><canvas id="championship-chart" width="1000" height="460" aria-label="Cumulative championship points by round"></canvas></article><article class="panel"><div class="panel-head"><h3>Championship position</h3></div><canvas id="bump-chart" width="1000" height="460" aria-label="Championship rank by round"></canvas></article></div><article class="panel"><div class="panel-head"><h3>Points per event</h3></div><div id="points-heatmap" class="season-heatmap table-scroll"></div></article><div id="championship-table" class="table-scroll"></div></section>
-          <section id="performance" class="season-section"><div class="section-title"><div><span class="eyebrow">Lower is better</span><h2>Competitive performance</h2></div><button class="export-button" data-export="performance">Export CSV</button></div><div class="season-chart-grid"><article class="panel"><div class="panel-head"><h3>Qualifying deficit</h3></div><canvas id="qualifying-chart" width="1000" height="460" aria-label="Qualifying percentage deficit trend"></canvas></article><article class="panel"><div class="panel-head"><h3>Race-pace deficit</h3></div><canvas id="race-pace-chart" width="1000" height="460" aria-label="Race pace percentage deficit trend"></canvas></article><article class="panel"><div class="panel-head"><h3>Qualifying versus race pace</h3></div><canvas id="pace-scatter" width="1000" height="460" aria-label="Qualifying versus race pace scatter"></canvas></article><article class="panel"><div class="panel-head"><h3>Pace rank → finish rank</h3></div><div id="rank-comparison" class="table-scroll"></div></article></div></section>
-          <section id="development" class="season-section"><div class="section-title"><div><span class="eyebrow">Relative, circuit-normalized pace</span><h2>Car development and change points</h2></div><button class="export-button" data-export="development">Export CSV</button></div><div id="development-table" class="table-scroll"></div><div id="change-points" class="insight-grid"></div><article class="panel"><div class="panel-head"><h3>Upgrade associations</h3></div><div id="upgrade-analysis"></div></article></section>
-          <section id="teams" class="season-section"><div class="section-title"><div><span class="eyebrow">Head to head</span><h2>Team comparison and track suitability</h2></div><button class="export-button" data-export="teams">Export CSV</button></div><div id="team-summary" class="analysis-note"></div><div class="season-chart-grid"><article class="panel"><div class="panel-head"><h3>Circuit-type strength</h3></div><div id="track-heatmap" class="table-scroll"></div></article><article class="panel"><div class="panel-head"><h3>Performance-to-points conversion</h3></div><canvas id="conversion-chart" width="1000" height="460" aria-label="Expected versus actual points"></canvas></article></div><div id="team-table" class="table-scroll"></div></section>
-          <section id="drivers" class="season-section"><div class="section-title"><div><span class="eyebrow">Teammate evidence</span><h2>Driver comparison and consistency</h2></div><button class="export-button" data-export="drivers">Export CSV</button></div><div id="driver-table" class="table-scroll"></div></section>
-          <section id="reliability" class="season-section"><div class="section-title"><div><span class="eyebrow">Results and operations</span><h2>Reliability, pit stops and points lost</h2></div><button class="export-button" data-export="reliability">Export CSV</button></div><div id="reliability-table" class="table-scroll"></div><div id="reliability-timeline" class="season-heatmap table-scroll"></div><div id="pitstop-table" class="table-scroll"></div></section>
-          <section id="tyres" class="season-section"><div class="section-title"><div><span class="eyebrow">Adjusted estimates</span><h2>Tyres and stint analysis</h2></div><button class="export-button" data-export="tyres">Export CSV</button></div><div id="degradation-table" class="table-scroll"></div><div id="strategy-heatmap" class="season-heatmap table-scroll"></div></section>
-          <section id="history" class="season-section"><div class="section-title"><div><span class="eyebrow">Every completed round</span><h2>Race-history explorer</h2></div><button class="export-button" data-export="history">Export CSV</button></div><div id="race-history" class="race-history-grid"></div></section>
-          <section id="predictions" class="season-section"><div class="section-title"><div><span class="eyebrow">No future-result leakage</span><h2>Momentum and prediction</h2></div><button class="export-button" data-export="predictions">Export CSV</button></div><div id="momentum-grid" class="season-card-grid"></div><div id="prediction-panel"></div></section>
+          <section id="overview" class="season-section">
+            <div class="section-title"><div><span class="eyebrow">Season status</span><h2>Overview</h2><p>A plain-language starting point for the selected filters.</p></div><button class="export-button" data-export="overview">Export CSV</button></div>
+            <p class="section-explanation"><strong>How to read:</strong> the cards identify leaders and notable patterns in the current view. The insight statements are calculated summaries; follow “supporting analysis” to inspect their evidence and confidence.</p>
+            <div id="season-summary-cards" class="season-card-grid"></div>
+            <div id="season-insights" class="insight-grid"></div>
+          </section>
+          <section id="championship" class="season-section">
+            <div class="section-title"><div><span class="eyebrow">Points and position</span><h2>Championship evolution</h2><p>Official points viewed by driver or team.</p></div><button class="export-button" data-export="championship">Export CSV</button></div>
+            <div class="season-chart-grid">
+              <article class="panel"><div class="panel-head"><h3>Cumulative points</h3></div><p class="data-explanation"><strong>How to read:</strong> each line adds points after every selected event. A steeper rise means more points scored in that round; the highest line leads the selected period. Hover for exact totals.</p><canvas id="championship-chart" width="1000" height="460" aria-label="Cumulative championship points by round"></canvas></article>
+              <article class="panel"><div class="panel-head"><h3>Championship position</h3></div><p class="data-explanation"><strong>How to read:</strong> rank 1 is at the top. A line moving upward means the driver or team gained championship positions; crossing lines show a change in order.</p><canvas id="bump-chart" width="1000" height="460" aria-label="Championship rank by round"></canvas></article>
+            </div>
+            <article class="panel"><div class="panel-head"><h3>Points per event</h3></div><p class="data-explanation"><strong>How to read:</strong> rows are drivers or teams and columns are rounds. Darker cells mean more points. Click a cell to open that race; a dash means no points in the current filtered data.</p><div id="points-heatmap" class="season-heatmap table-scroll"></div></article>
+            <p class="section-explanation"><strong>Championship table:</strong> totals points in the selected range. Wins count first-place results; podiums count top-three results; Events is the number of rounds represented.</p>
+            <div id="championship-table" class="table-scroll"></div>
+          </section>
+          <section id="performance" class="season-section">
+            <div class="section-title"><div><span class="eyebrow">Lower is better</span><h2>Competitive performance</h2><p>Pace separated from the final result.</p></div><button class="export-button" data-export="performance">Export CSV</button></div>
+            <div class="season-chart-grid">
+              <article class="panel"><div class="panel-head"><h3>Qualifying deficit</h3></div><p class="data-explanation"><strong>How to read:</strong> the gap to the qualifying benchmark at each round. At 0% the entry matches the fastest reference; 1% means roughly one second per 100-second lap slower. Lower is better. A rolling window smooths short-term variation.</p><canvas id="qualifying-chart" width="1000" height="460" aria-label="Qualifying percentage deficit trend"></canvas></article>
+              <article class="panel"><div class="panel-head"><h3>Race-pace deficit</h3></div><p class="data-explanation"><strong>How to read:</strong> the median gap in representative race laps after data-quality exclusions. Lower is faster. It estimates sustained pace rather than using the single fastest lap, so traffic, tyres and conditions still matter.</p><canvas id="race-pace-chart" width="1000" height="460" aria-label="Race pace percentage deficit trend"></canvas></article>
+              <article class="panel"><div class="panel-head"><h3>Qualifying versus race pace</h3></div><p class="data-explanation"><strong>How to read:</strong> each point is a team. Further left means stronger qualifying pace; lower means stronger race pace. The ideal area is bottom-left. Distance from the diagonal reveals teams that perform relatively better in one session type.</p><canvas id="pace-scatter" width="1000" height="460" aria-label="Qualifying versus race pace scatter"></canvas></article>
+              <article class="panel"><div class="panel-head"><h3>Pace rank → finish rank</h3></div><p class="data-explanation"><strong>How to read:</strong> compare estimated race-pace rank with the official finishing position. A better finish than pace rank can suggest strong execution or race circumstances; a worse finish can reflect incidents, reliability or strategy. Clean laps and confidence show evidence quality.</p><div id="rank-comparison" class="table-scroll"></div></article>
+            </div>
+          </section>
+          <section id="development" class="season-section">
+            <div class="section-title"><div><span class="eyebrow">Relative, circuit-normalized pace</span><h2>Car development and change points</h2><p>Whether relative pace is improving or declining over time.</p></div><button class="export-button" data-export="development">Export CSV</button></div>
+            <p class="section-explanation"><strong>Development table:</strong> Rate is the fitted percentage change per round; a negative rate means the deficit is shrinking and therefore improving. Early Q and Recent Q compare the first and latest three events. Change is recent minus early, so negative is improvement.</p>
+            <div id="development-table" class="table-scroll"></div>
+            <p class="section-explanation"><strong>Change points:</strong> these cards flag unusually large shifts in the pace series. “Before” and “after” are the estimated levels around that round; association does not prove an upgrade caused the change.</p>
+            <div id="change-points" class="insight-grid"></div>
+            <article class="panel"><div class="panel-head"><h3>Upgrade associations</h3></div><p class="data-explanation"><strong>How to read:</strong> sourced upgrade reports are listed beside nearby performance changes. Confidence describes the evidence match, not certainty that the component caused the result.</p><div id="upgrade-analysis"></div></article>
+          </section>
+          <section id="teams" class="season-section">
+            <div class="section-title"><div><span class="eyebrow">Head to head</span><h2>Team comparison and track suitability</h2><p>Relative speed, execution and circuit fit.</p></div><button class="export-button" data-export="teams">Export CSV</button></div>
+            <div id="team-summary" class="analysis-note"></div>
+            <div class="season-chart-grid">
+              <article class="panel"><div class="panel-head"><h3>Circuit-type strength</h3></div><p class="data-explanation"><strong>How to read:</strong> each value compares a team with its own normal season pace on that circuit type. Negative means stronger than its usual level; positive means weaker. Use the event count and confidence before comparing cells.</p><div id="track-heatmap" class="table-scroll"></div></article>
+              <article class="panel"><div class="panel-head"><h3>Performance-to-points conversion</h3></div><p class="data-explanation"><strong>How to read:</strong> expected points are estimated from pace rank; actual points are what the team scored. Points above the equal-performance line indicate more points than the pace model expected; points below indicate fewer. This measures outcomes, not strategy quality alone.</p><canvas id="conversion-chart" width="1000" height="460" aria-label="Expected versus actual points"></canvas></article>
+            </div>
+            <p class="section-explanation"><strong>Team table:</strong> lower qualifying and race deficits are faster; higher reliability is better. Pts vs expected is actual minus model-estimated points, while Momentum is a 0–100 recent-form index. These measures answer different questions and should not be added together.</p>
+            <div id="team-table" class="table-scroll"></div>
+          </section>
+          <section id="drivers" class="season-section">
+            <div class="section-title"><div><span class="eyebrow">Teammate evidence</span><h2>Driver comparison and consistency</h2><p>Drivers compared mainly against the closest available benchmark: their teammate.</p></div><button class="export-button" data-export="drivers">Export CSV</button></div>
+            <p class="section-explanation"><strong>How to read:</strong> Qualifying H2H is sessions won over comparable rounds. A negative teammate delta means the driver was quicker. Lower race-pace deficit is faster; lower Consistency MAD means pace varied less between events. Comparable laps and Confidence show how much evidence supports the result.</p>
+            <div id="driver-table" class="table-scroll"></div>
+          </section>
+          <section id="reliability" class="season-section">
+            <div class="section-title"><div><span class="eyebrow">Results and operations</span><h2>Reliability, pit stops and points lost</h2><p>Availability and operational outcomes, separate from raw pace.</p></div><button class="export-button" data-export="reliability">Export CSV</button></div>
+            <p class="section-explanation"><strong>Reliability table:</strong> Reliability is classified finishes divided by starts. Mechanical, Incidents, DNS and DSQ separate common reasons for failing to record a classified result; higher reliability is better.</p>
+            <div class="table-legend" aria-label="Reliability table legend">
+              <strong>Default order: highest reliability</strong>
+              <span><b>Starts</b> excludes DNS</span>
+              <span><b>Classified</b> includes finished and officially classified cars</span>
+              <span><b>Confidence</b> high ≥ 8 starts, medium ≥ 4, otherwise low</span>
+              <span><b>—</b> unavailable</span>
+            </div>
+            <div id="reliability-table" class="table-scroll"></div>
+            <p class="section-explanation"><strong>Round timeline:</strong> each cell shows a driver’s result state for that round. Green classified cells are successful finishes; incident, mechanical, DNS and DSQ cells identify the recorded failure category. Click a cell for race detail.</p>
+            <div class="table-legend status-legend" aria-label="Reliability timeline legend">
+              <strong>Rows ordered by reliability</strong>
+              <span><i class="legend-swatch state-classified"></i><b>CLA</b> classified</span>
+              <span><i class="legend-swatch state-mechanical"></i><b>MEC</b> mechanical</span>
+              <span><i class="legend-swatch state-incident"></i><b>INC</b> incident</span>
+              <span><i class="legend-swatch state-dns"></i><b>DNS</b> did not start</span>
+              <span><i class="legend-swatch state-dsq"></i><b>DSQ</b> disqualified</span>
+              <span><i class="legend-swatch state-other"></i><b>OTH</b> other status</span>
+              <span><b>—</b> no record</span>
+            </div>
+            <div id="reliability-timeline" class="season-heatmap table-scroll"></div>
+            <p class="section-explanation"><strong>Pit-stop table:</strong> Median pit-lane time is the middle measured stop, including travel through the lane. Lower is quicker. Variation shows consistency; lower variation means stops were more repeatable. It is not the stationary tyre-change time.</p>
+            <div class="table-legend" aria-label="Pit-stop table legend">
+              <strong>Default order: fastest median time</strong>
+              <span><b>Measured stops</b> stops with a usable pit-lane duration</span>
+              <span><b>Median</b> middle measured duration</span>
+              <span><b>Variation</b> standard deviation; lower is more consistent</span>
+              <span><b>—</b> insufficient timing</span>
+            </div>
+            <div id="pitstop-table" class="table-scroll"></div>
+          </section>
+          <section id="tyres" class="season-section">
+            <div class="section-title"><div><span class="eyebrow">Adjusted estimates</span><h2>Tyres and stint analysis</h2><p>Estimated lap-time change as tyres age, plus observed strategy sequences.</p></div><button class="export-button" data-export="tyres">Export CSV</button></div>
+            <p class="section-explanation"><strong>Degradation table:</strong> Tyre-age effect estimates seconds lost per additional tyre lap after accounting for a simple race-lap trend. Positive means lap times tend to get slower as the tyre ages. Residual MAD is unexplained variation—lower is a cleaner fit. This is an estimate, not measured tyre wear.</p>
+            <div id="degradation-table" class="table-scroll"></div>
+            <p class="section-explanation"><strong>Strategy map:</strong> each cell lists the driver’s compound sequence in that race. Hover for stint lengths and click for race detail. Different sequences are not automatically better or worse because race conditions and timing matter.</p>
+            <div id="strategy-heatmap" class="season-heatmap table-scroll"></div>
+          </section>
+          <section id="history" class="season-section">
+            <div class="section-title"><div><span class="eyebrow">Every completed round</span><h2>Race-history explorer</h2><p>A quick factual summary of each event in the selected range.</p></div><button class="export-button" data-export="history">Export CSV</button></div>
+            <p class="section-explanation"><strong>How to use:</strong> each card shows winner, pole, highest-scoring team, conditions, non-finishes and usable timing coverage. “Best team” means most points in that event, not necessarily fastest pace. Open a card for detailed race analysis.</p>
+            <div id="race-history" class="race-history-grid"></div>
+          </section>
+          <section id="predictions" class="season-section">
+            <div class="section-title"><div><span class="eyebrow">No future-result leakage</span><h2>Momentum and prediction</h2><p>Recent form and a cautious estimate of the next event.</p></div><button class="export-button" data-export="predictions">Export CSV</button></div>
+            <p class="section-explanation"><strong>Momentum cards:</strong> the 0–100 score combines recent pace, points conversion and reliability using the weights shown under Components. Higher means stronger recent form; it is a descriptive index, not a championship probability.</p>
+            <div id="momentum-grid" class="season-card-grid"></div>
+            <div id="prediction-panel"></div>
+          </section>
           <details id="methodology" class="methodology-panel"><summary>Methodology, confidence and data quality</summary><div id="methodology-content"></div></details>
         </div>
       </section>
@@ -443,6 +531,8 @@
     ? ""
     : "https://f1telemetrydashboard.onrender.com";
 </script>
+    <script src="assets/routing.js"></script>
+    <script src="assets/team-colors.js?v=20260727"></script>
     <script src="assets/app.js"></script>
     <script src="assets/season.js"></script>
   </body>
