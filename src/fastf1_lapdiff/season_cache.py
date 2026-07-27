@@ -19,7 +19,7 @@ from .season_analytics import build_season_analysis
 
 
 SCHEMA_VERSION = 1
-CALCULATION_VERSION = "season-analysis-v2"
+CALCULATION_VERSION = "season-analysis-v3"
 DEFAULT_STALE_LOCK_SECONDS = 60 * 60 * 3
 
 

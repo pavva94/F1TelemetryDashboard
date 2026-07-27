@@ -40,8 +40,8 @@ def create_app() -> Any:
         raise RuntimeError("FastAPI web dependencies are missing. Install with `python -m pip install -e .`.") from exc
 
     app = FastAPI(
-        title="FastF1 Lap Difference Dashboard",
-        description="No-login telemetry comparison dashboard backed by FastF1 data.",
+        title="Apex Signal API",
+        description="Formula 1 season, race, and lap analysis powered by FastF1 data.",
         version="0.1.0",
     )
     season_cache = SeasonCacheManager(DEFAULT_SEASON_CACHE_DIR, DEFAULT_CACHE_DIR)

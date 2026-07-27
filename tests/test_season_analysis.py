@@ -76,6 +76,8 @@ def test_reliability_and_points_conversion_are_transparent() -> None:
     assert classify_reliability("Collision") == "incident"
     assert classify_reliability("Disqualified") == "dsq"
     assert classify_reliability("+1 Lap") == "classified"
+    assert classify_reliability("Lapped") == "classified"
+    assert classify_reliability("Lapping") == "classified"
     assert expected_points(2, 0.5) == 9.0
     assert points_conversion(18, 9) == 2.0
     assert points_conversion(0, 0) is None

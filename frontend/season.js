@@ -370,7 +370,7 @@
     $("#reliability-timeline").innerHTML = heatmapTable(drivers, rounds, (driver, round) => {
       const row = state.payload.reliability.timeline.find((item) => item.driver === driver && item.round === round);
       const event = state.payload.events.find((item) => item.round === round);
-      return row ? `<a class="heat-cell state-${escapeHtml(row.state)}" href="${raceUrl(event, driver)}" title="${escapeHtml(row.status)}">${escapeHtml(row.state.slice(0, 3).toUpperCase())}</a>` : "—";
+      return row ? `<a class="heat-cell state-${escapeHtml(row.state)}" href="${raceUrl(event, driver)}" title="${escapeHtml(resultCellTitle(row))}">${escapeHtml(resultCellCode(row))}</a>` : "—";
     }, "Driver / round");
     const pitTeams = state.payload.operations.teams
       .filter((row) => hasTeam(row.team))
@@ -399,7 +399,7 @@
     $("#race-history").innerHTML = state.payload.events.filter((event) => event.status === "completed" && visibleRounds().includes(event.round)).map((event) => {
       const eventRows = records.filter((row) => row.round === event.round);
       const points = groupSum(eventRows, "team", pointValue)[0];
-      const dnfs = eventRows.filter((row) => !["classified", "other"].includes(row.reliability)).length;
+      const dnfs = eventRows.filter((row) => row.reliability !== "classified").length;
       return `<article class="race-history-card"><header><span class="round">R${event.round}</span><strong>${escapeHtml(event.name)}</strong></header><small>${escapeHtml(formatDate(event.date))} · ${escapeHtml(event.location || "")}${event.sprint ? " · Sprint" : ""}</small><dl><div><dt>Winner</dt><dd>${escapeHtml(event.winner || "—")}</dd></div><div><dt>Pole</dt><dd>${escapeHtml(event.pole || "—")}</dd></div><div><dt>Best team</dt><dd>${escapeHtml(points?.entity || "—")}</dd></div><div><dt>Conditions</dt><dd>${escapeHtml(event.weather || "unknown")}</dd></div><div><dt>DNF / DNS / DSQ</dt><dd>${dnfs}</dd></div><div><dt>Data</dt><dd>${eventRows.reduce((sum, row) => sum + row.cleanLaps, 0)} clean laps</dd></div></dl><a class="primary" href="${raceUrl(event)}">Open detailed race analysis</a></article>`;
     }).join("");
   }
@@ -890,6 +890,26 @@
   function formatPoints(value) { return value == null ? null : `${value.toFixed(0)} points`; }
   function signed(value, digits = 2, unit = "") { return value == null ? "—" : `${value >= 0 ? "+" : ""}${value.toFixed(digits)}${unit}`; }
   function humanize(value) { return value.replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (char) => char.toUpperCase()); }
+
+  function resultCellCode(row) {
+    const status = String(row?.status || "").trim();
+    if (row?.state === "classified") {
+      const lapsDown = status.match(/^\+(\d+)\s+laps?$/i);
+      if (lapsDown) return `+${lapsDown[1]}L`;
+      if (/lapp/i.test(status)) return "LAP";
+      return "FIN";
+    }
+    if (/retired/i.test(status)) return "RET";
+    if (/not classified/i.test(status)) return "NC";
+    if (/did not qualify/i.test(status)) return "DNQ";
+    if (/withdraw/i.test(status)) return "WDN";
+    return { mechanical: "MEC", incident: "INC", dns: "DNS", dsq: "DSQ" }[row?.state] || "OTH";
+  }
+
+  function resultCellTitle(row) {
+    const status = String(row?.status || "Unknown status").trim();
+    return row?.state === "classified" ? `${status} · classified finish` : status;
+  }
   function formatDate(value) { if (!value) return "date unavailable"; const date = new Date(value); return Number.isNaN(date.valueOf()) ? String(value) : date.toLocaleDateString(undefined, { dateStyle: "medium" }); }
   function setStatus(message, error = false) { elements.status.textContent = message; elements.status.classList.toggle("error", error); }
   function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }

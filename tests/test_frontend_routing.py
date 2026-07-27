@@ -76,6 +76,15 @@ def test_plain_language_guidance_covers_both_analysis_pages() -> None:
     assert "overlapping ranges mean the model cannot clearly separate" in season
 
 
+def test_public_brand_uses_apex_signal_and_credits_fastf1_as_data_source() -> None:
+    index = (FRONTEND / "index.html").read_text()
+
+    assert "<h1>Apex Signal</h1>" in index
+    assert "<title>Apex Signal — Formula 1 Performance Intelligence</title>" in index
+    assert "Powered by FastF1 data" in index
+    assert "<h1>FastF1" not in index
+
+
 def test_reliability_tables_have_legends_and_metric_first_ordering() -> None:
     index = (FRONTEND / "index.html").read_text()
     season = (FRONTEND / "season.js").read_text()
@@ -83,8 +92,10 @@ def test_reliability_tables_have_legends_and_metric_first_ordering() -> None:
     assert "Default order: highest reliability" in index
     assert "Rows ordered by reliability" in index
     assert "Default order: fastest median time" in index
-    for code in ("CLA", "MEC", "INC", "DNS", "DSQ", "OTH"):
+    for code in ("FIN", "LAP", "MEC", "INC", "RET", "DNS", "DSQ", "OTH"):
         assert f"<b>{code}</b>" in index
+    assert 'if (/lapp/i.test(status)) return "LAP"' in season
+    assert 'if (/retired/i.test(status)) return "RET"' in season
     assert "compareNullableDescending(a.percentage, b.percentage)" in season
     assert "compareNullable(a.medianPitLane, b.medianPitLane)" in season
     assert 'table(["Rank", "Team", "Starts"' in season

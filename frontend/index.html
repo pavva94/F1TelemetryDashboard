@@ -3,7 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>FastF1 Season and Race Engineering Dashboard</title>
+    <title>Apex Signal — Formula 1 Performance Intelligence</title>
+    <meta
+      name="description"
+      content="Apex Signal turns Formula 1 timing and telemetry into clear season, race, and lap analysis. Powered by FastF1 data."
+    />
     <link rel="stylesheet" href="assets/styles.css" />
   </head>
   <body>
@@ -12,9 +16,9 @@
         <div class="brand">
           <span class="mark" aria-hidden="true"></span>
           <div>
-            <span class="brand-kicker">Race Intelligence // Live Data</span>
-            <h1>FastF1 Engineering</h1>
-            <p>Season performance · Race execution · Lap telemetry</p>
+            <span class="brand-kicker">Formula 1 Performance Intelligence</span>
+            <h1>Apex Signal</h1>
+            <p>Season performance · Race execution · Lap telemetry · Powered by FastF1 data</p>
           </div>
         </div>
 
@@ -482,12 +486,14 @@
               <span><b>—</b> unavailable</span>
             </div>
             <div id="reliability-table" class="table-scroll"></div>
-            <p class="section-explanation"><strong>Round timeline:</strong> each cell shows a driver’s result state for that round. Green classified cells are successful finishes; incident, mechanical, DNS and DSQ cells identify the recorded failure category. Click a cell for race detail.</p>
+            <p class="section-explanation"><strong>Round timeline:</strong> each cell shows the recorded result for that round. FIN means a lead-lap finish; LAP and +nL are classified finishes one or more laps down. Incident, mechanical, retirement, DNS and DSQ cells identify non-finishes or other recorded outcomes. Click a cell for race detail.</p>
             <div class="table-legend status-legend" aria-label="Reliability timeline legend">
               <strong>Rows ordered by reliability</strong>
-              <span><i class="legend-swatch state-classified"></i><b>CLA</b> classified</span>
+              <span><i class="legend-swatch state-classified"></i><b>FIN</b> lead-lap finish</span>
+              <span><i class="legend-swatch state-classified"></i><b>LAP</b> classified, lapped</span>
               <span><i class="legend-swatch state-mechanical"></i><b>MEC</b> mechanical</span>
               <span><i class="legend-swatch state-incident"></i><b>INC</b> incident</span>
+              <span><i class="legend-swatch state-other"></i><b>RET</b> retired, cause unspecified</span>
               <span><i class="legend-swatch state-dns"></i><b>DNS</b> did not start</span>
               <span><i class="legend-swatch state-dsq"></i><b>DSQ</b> disqualified</span>
               <span><i class="legend-swatch state-other"></i><b>OTH</b> other status</span>

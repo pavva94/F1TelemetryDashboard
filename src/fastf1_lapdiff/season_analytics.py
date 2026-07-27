@@ -112,7 +112,7 @@ def classify_reliability(status: str | None) -> str:
         return "mechanical"
     if any(term in normalized for term in INCIDENT_TERMS):
         return "incident"
-    if normalized.startswith("+") or normalized in {"finished", "lapping"}:
+    if normalized.startswith("+") or normalized in {"finished", "lapped", "lapping"}:
         return "classified"
     return "other"
 

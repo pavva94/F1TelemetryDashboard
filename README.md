@@ -1,7 +1,7 @@
-# FastF1 Lap Difference Detection
+# Apex Signal
 [Official Website](https://www.pavesialessandro.com/F1TelemetryDashboard/index.html) · [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/A3A423RK3Y)
 
-Evidence-based lap comparison using only FastF1-supported data. The tool aligns laps by distance, compares telemetry channels, detects meaningful gains/losses, and labels uncertain vehicle-behavior conclusions as heuristics.
+Formula 1 performance intelligence powered by FastF1 data. Apex Signal combines season analysis, race context, and evidence-based lap comparison; it aligns laps by distance, compares telemetry channels, detects meaningful gains/losses, and labels uncertain vehicle-behavior conclusions as heuristics.
 
 ## What It Uses
 
