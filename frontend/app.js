@@ -650,6 +650,7 @@ function renderRaceInsightTables(insights) {
   els.raceInsightTables.innerHTML = `
     <div class="insight-block">
       <h4>Tyre Compound Pace</h4>
+      <p class="compact-explanation">Average is the mean of usable laps on that compound; Best is its quickest lap. Lower times are faster, but drivers, fuel loads and stint ages are mixed together.</p>
       <table class="compact-table">
         <thead><tr><th>Compound</th><th>Avg</th><th>Best</th><th>Laps</th></tr></thead>
         <tbody>${tyres.map((item) => `<tr><td>${escapeHtml(item.compound)}</td><td>${clock(item.averagePace)}</td><td>${clock(item.bestLapTime)}</td><td>${item.lapCount}</td></tr>`).join("") || emptyRow(4)}</tbody>
@@ -657,6 +658,7 @@ function renderRaceInsightTables(insights) {
     </div>
     <div class="insight-block">
       <h4>Driver Stints</h4>
+      <p class="compact-explanation">A stint is consecutive laps on one set of tyres. The lap range shows its length and Avg shows representative pace; compare similar compounds and stint phases.</p>
       <table class="compact-table">
         <thead><tr><th>Driver</th><th>Stint</th><th>Tyre</th><th>Laps</th><th>Avg</th></tr></thead>
         <tbody>${stints.map((item) => `<tr><td>${escapeHtml(item.driver)}</td><td>${item.stint}</td><td>${escapeHtml(item.compound || "--")}</td><td>${item.startLap ?? "--"}-${item.endLap ?? "--"}</td><td>${clock(item.averagePace)}</td></tr>`).join("") || emptyRow(5)}</tbody>
@@ -664,6 +666,7 @@ function renderRaceInsightTables(insights) {
     </div>
     <div class="insight-block">
       <h4>Pit Stops</h4>
+      <p class="compact-explanation">Lane is the measured time from pit entry to pit exit, not only the stationary tyre change. Lower is quicker; a dash means timing was unavailable.</p>
       <table class="compact-table">
         <thead><tr><th>Driver</th><th>Lap</th><th>Tyre</th><th>Lane</th></tr></thead>
         <tbody>${pits.map((item) => `<tr><td>${escapeHtml(item.driver)}</td><td>${item.lap ?? "--"}</td><td>${escapeHtml([item.compoundBefore, item.compoundAfter].filter(Boolean).join(" → ") || "--")}</td><td>${item.pitLaneTime ? `${item.pitLaneTime.toFixed(2)} s` : "--"}</td></tr>`).join("") || emptyRow(4)}</tbody>

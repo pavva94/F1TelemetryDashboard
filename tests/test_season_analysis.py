@@ -160,11 +160,19 @@ def test_multi_event_aggregation_builds_all_major_sections() -> None:
     assert payload["trackAnalysis"]["teamCount"] == 2
     assert payload["trackAnalysis"]["teamsAnalyzed"] == ["Alpha", "Beta"]
     assert {row["team"] for row in payload["trackAnalysis"]["strengths"]} == {"Alpha", "Beta"}
+    assert payload["charts"]["championshipProgression"]["drivers"]
+    assert payload["tables"]["raceResults"]
+    assert payload["tables"]["qualifyingResults"]
+    assert payload["comparisons"]["summary"]
+    assert payload["summaryStatistics"]["driverConsistency"]
     assert payload["methodology"]["prediction"]
 
 
 def test_season_api_and_direct_page_routes_are_registered() -> None:
     paths = {route.path for route in create_app().routes}
     assert "/api/season-analysis" in paths
+    assert "/api/season/{year}/status" in paths
+    assert "/api/season/{year}/analysis" in paths
+    assert "/api/season/{year}/refresh" in paths
     assert "/season" in paths
     assert "/race" in paths

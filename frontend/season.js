@@ -7,13 +7,14 @@
   const chartHover = new WeakMap();
   const boundCharts = new WeakSet();
   let seasonChartTooltip = null;
+  let seasonLoadSequence = 0;
   const elements = {
     racePage: $("#race-page"), seasonPage: $("#season-page"), form: $("#season-filters"),
     year: $("#season-year"), start: $("#season-start-round"), end: $("#season-end-round"),
-    quick: $("#season-quick-range"), session: $("#season-session"), conditions: $("#season-conditions"),
+    session: $("#season-session"), conditions: $("#season-conditions"),
     valueKind: $("#season-value-kind"), reference: $("#season-reference"), level: $("#season-level"),
     rolling: $("#season-rolling"), teams: $("#season-teams"), drivers: $("#season-drivers"),
-    sprints: $("#season-sprints"), classified: $("#season-classified"), reset: $("#season-reset"),
+    sprints: $("#season-sprints"), classified: $("#season-classified"),
     status: $("#season-status"), progress: $("#season-progress"), content: $("#season-content"),
     freshness: $("#season-freshness"),
   };
@@ -24,6 +25,7 @@
     createSeasonChartTooltip();
     wireRouting();
     wireFilters();
+    applyRoute();
     if (window.FastF1Routing.route() === "season") {
       await loadSeasonOptions();
     }
@@ -66,25 +68,9 @@
 
   function wireFilters() {
     elements.form.addEventListener("submit", (event) => { event.preventDefault(); loadSeason(); });
-    elements.reset.addEventListener("click", () => {
-      elements.quick.value = "full";
-      elements.session.value = "combined"; elements.conditions.value = "all";
-      elements.valueKind.value = "observed"; elements.reference.value = "fastest";
-      elements.level.value = "team"; elements.rolling.value = "3";
-      elements.sprints.checked = true; elements.classified.checked = true;
-      [...elements.teams.options, ...elements.drivers.options].forEach((option) => { option.selected = false; });
-      setRoundRange("full");
-      loadSeason();
+    elements.year.addEventListener("change", async () => {
+      if (await loadSchedule()) loadSeason();
     });
-    elements.year.addEventListener("change", loadSchedule);
-    elements.quick.addEventListener("change", () => setRoundRange(elements.quick.value));
-    [elements.start, elements.end].forEach((control) => control.addEventListener("change", () => { elements.quick.value = "custom"; }));
-    [elements.level, elements.rolling, elements.valueKind, elements.reference, elements.session, elements.conditions, elements.classified, elements.teams, elements.drivers]
-      .forEach((control) => control.addEventListener("change", () => {
-        if (!state.payload) return;
-        render();
-        syncUrl();
-      }));
     document.addEventListener("click", (event) => {
       const button = event.target.closest(".season-table th button");
       if (button) sortTable(button.closest("table"), Number(button.dataset.column));
@@ -100,7 +86,6 @@
       const query = new URLSearchParams(location.search);
       const requested = query.get("season");
       if (requested && [...elements.year.options].some((option) => option.value === requested)) elements.year.value = requested;
-      restoreControls(query);
       await loadSchedule();
     } catch (error) {
       setStatus(`Unable to load seasons: ${error.message}`, true);
@@ -108,66 +93,91 @@
   }
 
   async function loadSchedule() {
-    if (!elements.year.value) return;
+    if (!elements.year.value) return false;
     try {
       const data = await getJson(`/api/events?year=${encodeURIComponent(elements.year.value)}`);
       state.schedule = data.events || [];
       const options = state.schedule.map((event) => ({ value: event.round, label: `${event.round}. ${event.name}` }));
-      const priorStart = elements.start.value;
-      const priorEnd = elements.end.value;
       fillSelect(elements.start, options);
       fillSelect(elements.end, options);
-      if (priorStart && [...elements.start.options].some((option) => option.value === priorStart)) elements.start.value = priorStart;
-      if (priorEnd && [...elements.end.options].some((option) => option.value === priorEnd)) elements.end.value = priorEnd;
-      else elements.end.value = options.at(-1)?.value || "";
-      const query = new URLSearchParams(location.search);
-      if (query.get("start")) elements.start.value = query.get("start");
-      if (query.get("end")) elements.end.value = query.get("end");
-      if (query.get("start") || query.get("end")) elements.quick.value = "custom";
+      elements.start.value = options[0]?.value || "";
+      elements.end.value = options.at(-1)?.value || "";
+      return true;
     } catch (error) {
       setStatus(`Unable to load the season schedule: ${error.message}`, true);
+      return false;
     }
-  }
-
-  function setRoundRange(kind) {
-    const rounds = state.schedule.map((event) => Number(event.round)).filter(Number.isFinite);
-    if (!rounds.length) return;
-    const max = Math.max(...rounds);
-    const midpoint = Math.ceil(max / 2);
-    const ranges = {
-      full: [1, max], last3: [Math.max(1, max - 2), max], last5: [Math.max(1, max - 4), max],
-      firstHalf: [1, midpoint], secondHalf: [midpoint + 1, max],
-      beforeBreak: [1, Math.min(13, max)], afterBreak: [Math.min(14, max), max],
-    };
-    [elements.start.value, elements.end.value] = (ranges[kind] || ranges.full).map(String);
   }
 
   async function loadSeason() {
     if (!elements.year.value) return;
+    const sequence = ++seasonLoadSequence;
+    const year = elements.year.value;
     elements.progress.hidden = false;
     elements.content.hidden = true;
-    setStatus("Loading and normalizing completed sessions. Cached events are reused automatically.");
-    const params = new URLSearchParams({
-      year: elements.year.value,
-      start_round: elements.start.value || "1",
-      end_round: elements.end.value || String(state.schedule.at(-1)?.round || 99),
-      include_sprints: String(elements.sprints.checked),
-    });
+    setStatus(`Checking the shared ${year} season analysis cache…`);
     try {
-      state.payload = await getJson(`/api/season-analysis?${params}`);
+      let result = await fetchSeasonAnalysis(year);
+      if (result.preparing) {
+        setStatus(`Preparing the ${year} season analysis for the first time. This calculation is shared across all visitors.`);
+        result = await waitForPreparedSeason(year, sequence, result.cache);
+      }
+      if (sequence !== seasonLoadSequence) return;
+      state.payload = result.payload;
       populateEntityFilters();
       syncUrl();
       render();
       elements.content.hidden = false;
       const meta = state.payload.meta;
       const status = meta.isComplete ? "Complete season analysis" : `Analysis includes completed rounds ${meta.completedRounds?.[0] || "—"}–${meta.availableRound || "—"}`;
-      setStatus(`${status}${meta.partial ? `. Partial data: ${state.payload.errors.length} session load${state.payload.errors.length === 1 ? "" : "s"} unavailable.` : "."}`);
+      const cache = meta.cache || {};
+      if (cache.stale) {
+        setStatus(`Showing data through Round ${cache.lastCompletedRound || meta.availableRound || "—"}. Updated Round ${cache.latestAvailableRound || "new"} data is being prepared.`);
+      } else {
+        setStatus(`${status}${meta.partial ? `. Partial data: ${state.payload.errors.length} session load${state.payload.errors.length === 1 ? "" : "s"} unavailable.` : "."}`);
+      }
       elements.freshness.textContent = `Generated ${formatDate(meta.generatedAt)} · ${meta.dataFreshness || "FastF1 timing data"}`;
     } catch (error) {
+      if (sequence !== seasonLoadSequence) return;
       setStatus(`Season analysis failed: ${error.message}. Check the server connection, then retry.`, true);
     } finally {
-      elements.progress.hidden = true;
+      if (sequence === seasonLoadSequence) elements.progress.hidden = true;
     }
+  }
+
+  async function fetchSeasonAnalysis(year) {
+    const response = await fetch(`${apiBase}/api/season/${encodeURIComponent(year)}/analysis`);
+    let data = {};
+    try { data = await response.json(); } catch (_) {}
+    if (response.status === 202) return { preparing: true, cache: data.cache || data };
+    if (!response.ok) throw new Error(data.detail || `Request failed (${response.status})`);
+    return { preparing: false, payload: data };
+  }
+
+  async function waitForPreparedSeason(year, sequence, initial) {
+    let cache = initial || {};
+    while (sequence === seasonLoadSequence) {
+      updatePreparationProgress(cache);
+      await delay(2000);
+      const response = await fetch(`${apiBase}/api/season/${encodeURIComponent(year)}/status`, { cache: "no-store" });
+      const status = await response.json();
+      if (!response.ok) throw new Error(status.detail || `Status request failed (${response.status})`);
+      cache = status;
+      if (status.status === "failed") throw new Error(status.error || "The shared cache could not be prepared.");
+      if (status.status === "ready") {
+        const result = await fetchSeasonAnalysis(year);
+        if (!result.preparing) return result;
+      }
+    }
+    throw new Error("Season selection changed.");
+  }
+
+  function updatePreparationProgress(cache) {
+    const progress = Number(cache?.progress || 0);
+    const stage = cache?.stage || "waiting for the cache generator";
+    const label = elements.progress.querySelector("span");
+    if (label) label.textContent = `${humanize(stage)}${progress ? ` · ${progress}%` : ""}`;
+    elements.progress.style.setProperty("--progress", `${Math.max(2, progress)}%`);
   }
 
   function populateEntityFilters() {
@@ -196,8 +206,11 @@
     const teams = selectedValues(elements.teams);
     const drivers = selectedValues(elements.drivers);
     const condition = elements.conditions.value;
+    const firstRound = Number(elements.start.value || 1);
+    const lastRound = Number(elements.end.value || Number.MAX_SAFE_INTEGER);
     const allowedRounds = new Set(state.payload.events.filter((event) => condition === "all" || event.weather === condition).map((event) => event.round));
     return state.payload.records.filter((record) =>
+      record.round >= firstRound && record.round <= lastRound &&
       (!teams.length || teams.includes(record.team)) &&
       (!drivers.length || drivers.includes(record.driver)) &&
       (condition === "all" || allowedRounds.has(record.round)) &&
@@ -342,18 +355,29 @@
   }
 
   function renderReliability() {
-    const teams = state.payload.reliability.teams.filter((row) => hasTeam(row.entity));
-    $("#reliability-table").innerHTML = table(["Team", "Starts", "Classified", "Mechanical", "Incidents", "DNS", "DSQ", "Reliability", "Confidence"], teams.map((row) => [
-      row.entity, row.starts, row.classified, row.mechanical, row.incidents, row.dns, row.dsq, row.percentage == null ? "—" : `${row.percentage.toFixed(1)}%`, confidenceBadge(row.confidence),
+    const teams = state.payload.reliability.teams
+      .filter((row) => hasTeam(row.entity))
+      .sort((a, b) => compareNullableDescending(a.percentage, b.percentage) || b.classified - a.classified || a.entity.localeCompare(b.entity));
+    $("#reliability-table").innerHTML = table(["Rank", "Team", "Starts", "Classified", "Mechanical", "Incidents", "DNS", "DSQ", "Reliability", "Confidence"], teams.map((row, index) => [
+      index + 1, row.entity, row.starts, row.classified, row.mechanical, row.incidents, row.dns, row.dsq, row.percentage == null ? "—" : `${row.percentage.toFixed(1)}%`, confidenceBadge(row.confidence),
     ]));
     const rounds = visibleRounds();
-    $("#reliability-timeline").innerHTML = heatmapTable(visibleEntities("driver"), rounds, (driver, round) => {
+    const driverReliability = new Map(state.payload.reliability.drivers.map((row) => [row.entity, row]));
+    const drivers = visibleEntities("driver").sort((a, b) => {
+      const left = driverReliability.get(a);
+      const right = driverReliability.get(b);
+      return compareNullableDescending(left?.percentage, right?.percentage) || (right?.classified || 0) - (left?.classified || 0) || a.localeCompare(b);
+    });
+    $("#reliability-timeline").innerHTML = heatmapTable(drivers, rounds, (driver, round) => {
       const row = state.payload.reliability.timeline.find((item) => item.driver === driver && item.round === round);
       const event = state.payload.events.find((item) => item.round === round);
       return row ? `<a class="heat-cell state-${escapeHtml(row.state)}" href="${raceUrl(event, driver)}" title="${escapeHtml(row.status)}">${escapeHtml(row.state.slice(0, 3).toUpperCase())}</a>` : "—";
     }, "Driver / round");
-    $("#pitstop-table").innerHTML = table(["Team", "Measured stops", "Median pit-lane time", "Variation", "Confidence"], state.payload.operations.teams.filter((row) => hasTeam(row.team)).map((row) => [
-      row.team, row.stops, row.medianPitLane == null ? "—" : `${row.medianPitLane.toFixed(2)} s`, row.variation == null ? "—" : `${row.variation.toFixed(2)} s`, confidenceBadge(row.confidence),
+    const pitTeams = state.payload.operations.teams
+      .filter((row) => hasTeam(row.team))
+      .sort((a, b) => compareNullable(a.medianPitLane, b.medianPitLane) || b.stops - a.stops || a.team.localeCompare(b.team));
+    $("#pitstop-table").innerHTML = table(["Rank", "Team", "Measured stops", "Median pit-lane time", "Variation", "Confidence"], pitTeams.map((row, index) => [
+      row.medianPitLane == null ? "—" : index + 1, row.team, row.stops, row.medianPitLane == null ? "—" : `${row.medianPitLane.toFixed(2)} s`, row.variation == null ? "—" : `${row.variation.toFixed(2)} s`, confidenceBadge(row.confidence),
     ]));
   }
 
@@ -387,7 +411,7 @@
     ).join("");
     const prediction = state.payload.prediction;
     $("#prediction-panel").innerHTML = prediction
-      ? `<article class="panel"><div class="panel-head"><h3>Predicted order · ${escapeHtml(prediction.event)}</h3><span class="method-badge">prediction</span></div>${table(["Rank", "Team", "Predicted deficit", "Confidence range", "Evidence rounds", "Confidence"], prediction.teams.filter((row) => hasTeam(row.team)).map((row) => [row.rank, row.team, formatPercent(row.deficit), `${formatPercent(row.range[0])}–${formatPercent(row.range[1])}`, row.roundsUsed.join(", "), confidenceBadge(row.confidence)]))}<p class="analysis-note">Only rounds before ${prediction.targetRound} are used (${escapeHtml(prediction.leakageGuard)}). Similar circuits: ${prediction.similarCircuits?.map((item) => `${item.event} (${item.shared.join(", ")})`).join("; ") || "insufficient maintained metadata"}.</p>${renderBacktest()}</article>`
+      ? `<article class="panel"><div class="panel-head"><h3>Predicted order · ${escapeHtml(prediction.event)}</h3><span class="method-badge">prediction</span></div><p class="data-explanation"><strong>How to read:</strong> lower predicted deficit is faster. The confidence range is the plausible pace interval, not a guaranteed finishing-position range; overlapping ranges mean the model cannot clearly separate those teams. Evidence rounds are the earlier events used for the estimate.</p>${table(["Rank", "Team", "Predicted deficit", "Confidence range", "Evidence rounds", "Confidence"], prediction.teams.filter((row) => hasTeam(row.team)).map((row) => [row.rank, row.team, formatPercent(row.deficit), `${formatPercent(row.range[0])}–${formatPercent(row.range[1])}`, row.roundsUsed.join(", "), confidenceBadge(row.confidence)]))}<p class="analysis-note">Only rounds before ${prediction.targetRound} are used (${escapeHtml(prediction.leakageGuard)}). Similar circuits: ${prediction.similarCircuits?.map((item) => `${item.event} (${item.shared.join(", ")})`).join("; ") || "insufficient maintained metadata"}.</p>${renderBacktest()}</article>`
       : `<p class="unavailable">No future scheduled round exists in this selection. Historical backtest accuracy remains available in the methodology data when at least four completed rounds are present.</p>`;
   }
 
@@ -741,16 +765,7 @@
   }
 
   function seasonUrl() {
-    const params = new URLSearchParams({
-      season: elements.year.value || new Date().getFullYear(),
-      start: elements.start.value || "1", end: elements.end.value || "",
-      session: elements.session.value, conditions: elements.conditions.value, values: elements.valueKind.value,
-      reference: elements.reference.value, level: elements.level.value, rolling: elements.rolling.value,
-      sprints: String(elements.sprints.checked), classified: String(elements.classified.checked),
-    });
-    const teams = selectedValues(elements.teams), drivers = selectedValues(elements.drivers);
-    if (teams.length) params.set("teams", teams.join("|"));
-    if (drivers.length) params.set("drivers", drivers.join("|"));
+    const params = new URLSearchParams({ season: elements.year.value || new Date().getFullYear() });
     return window.FastF1Routing.url("season", params);
   }
 
@@ -758,13 +773,6 @@
     const params = new URLSearchParams({ year: elements.year.value, event: event?.name || "", session: "Race" });
     if (driver) params.set("driver", driver); if (team) params.set("team", team);
     return window.FastF1Routing.url("race", params);
-  }
-
-  function restoreControls(query) {
-    const mapping = { session: elements.session, conditions: elements.conditions, values: elements.valueKind, reference: elements.reference, level: elements.level, rolling: elements.rolling };
-    Object.entries(mapping).forEach(([key, control]) => { if (query.get(key)) control.value = query.get(key); });
-    if (query.has("sprints")) elements.sprints.checked = query.get("sprints") === "true";
-    if (query.has("classified")) elements.classified.checked = query.get("classified") === "true";
   }
 
   function card(label, result, value, detail, target) {
@@ -833,6 +841,18 @@
   }
   function metricFor(rows, entity, key, metric) { const values = rows.filter((row) => row[key] === entity && row[metric] != null).map((row) => row[metric]); return values.length ? median(values) : null; }
   function median(values) { const sorted = [...values].sort((a, b) => a - b); const middle = Math.floor(sorted.length / 2); return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2; }
+  function compareNullable(left, right) {
+    if (left == null && right == null) return 0;
+    if (left == null) return 1;
+    if (right == null) return -1;
+    return left - right;
+  }
+  function compareNullableDescending(left, right) {
+    if (left == null && right == null) return 0;
+    if (left == null) return 1;
+    if (right == null) return -1;
+    return right - left;
+  }
   function rolling(values, window) { return values.map((_, index) => median(values.slice(Math.max(0, index - window + 1), index + 1))); }
   function driverConsistency(records) {
     return [...new Set(records.map((row) => row.driver))].map((driver) => {
@@ -863,6 +883,7 @@
   function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
   function csvCell(value) { const string = typeof value === "object" ? JSON.stringify(value) : String(value); return `"${string.replaceAll('"', '""')}"`; }
   function debounce(fn, wait) { let timer; return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), wait); }; }
+  function delay(milliseconds) { return new Promise((resolve) => setTimeout(resolve, milliseconds)); }
   function sortTable(tableElement, column) {
     const body = tableElement?.tBodies?.[0]; if (!body) return;
     const rows = [...body.rows]; const ascending = tableElement.dataset.sortColumn !== String(column) || tableElement.dataset.sortDirection !== "asc";

@@ -116,18 +116,34 @@ The dashboard is a two-page analysis platform:
 
 - `/race` preserves the original single-weekend session, standings, pace, stint, pit-stop, and lap-comparison workflow.
 - `/season` builds a cacheable season dataset across completed rounds and exposes championship evolution, normalized qualifying and race pace, development, team and driver comparisons, reliability, tyres, operations, track suitability, points conversion, momentum, change detection, and leakage-safe predictions.
-- The former `/` URL remains available and opens Race Analysis. Season heatmaps, tables, and race-history cards link back to `/race` with `year`, `event`, `session`, driver, and team query context.
+- The `/` URL opens Season Analysis by default. Direct `/season` and `/race` URLs remain available, and season heatmaps, tables, and race-history cards link to Race Analysis with `year`, `event`, `session`, driver, and team query context.
 
 Season filter state is stored in URL query parameters. Direct links, refresh, browser back/forward, and return navigation therefore preserve the active season range and model choices.
 
 ## Season Data Pipeline
 
-`src/fastf1_lapdiff/season_analytics.py` loads Race and Qualifying timing without car telemetry, normalizes each completed event, and memoizes the resulting season payload in the web process. FastF1's disk cache remains the event-level source cache. Sprint results are loaded only when requested and when the weekend schedule exposes a sprint.
+`src/fastf1_lapdiff/season_analytics.py` loads Race and Qualifying timing without car telemetry and normalizes each completed event. The complete chart-ready result is stored once per season as a versioned, gzip-compressed shared server cache. Cross-process file locks prevent duplicate work, stale locks are recovered, and an atomic generation pointer keeps the previous valid dataset available throughout refreshes. FastF1's disk cache remains the event-level source cache.
 
-The public endpoint is:
+The public endpoints are:
 
 ```text
-GET /api/season-analysis?year=2024&start_round=1&end_round=24&include_sprints=true
+GET /api/seasons
+GET /api/season/2024/status
+GET /api/season/2024/analysis
+POST /api/season/2024/refresh
+```
+
+`/api/season-analysis?year=2024` remains as a compatibility alias. Configure
+`SEASON_ANALYSIS_CACHE_DIR` on persistent storage and set `SEASON_REFRESH_TOKEN`
+to enable the protected refresh endpoint (send it as `X-Season-Refresh-Token`).
+The current season is refreshed only when the lightweight schedule check sees a
+new completed round; completed historical seasons do not expire on a short TTL.
+
+Administrators can prepare one season or all configured seasons explicitly:
+
+```bash
+python -m fastf1_lapdiff.precompute_season --season 2026
+python -m fastf1_lapdiff.precompute_season --all
 ```
 
 The response explicitly separates:

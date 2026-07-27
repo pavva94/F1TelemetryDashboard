@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from functools import lru_cache
+import gc
 from math import sqrt
 from statistics import median
 from typing import Any, Callable, Iterable
@@ -314,9 +314,8 @@ def build_season_analysis(
     end_round: int | None = None,
     include_sprints: bool = True,
     session_loader: Callable[[int, str, str, str | None], Any] | None = None,
+    progress_callback: Callable[[str, int, dict[str, Any] | None], None] | None = None,
 ) -> dict[str, Any]:
-    from .fastf1_loader import load_fastf1_session
-
     loader = session_loader or _season_session_loader
     schedule = list_events(year)
     if not schedule:
@@ -328,7 +327,14 @@ def build_season_analysis(
     errors: list[dict[str, Any]] = []
     event_rows: list[dict[str, Any]] = []
 
-    for event in selected:
+    total = max(1, len(selected))
+    for index, event in enumerate(selected):
+        if progress_callback:
+            progress_callback(
+                "processing race results",
+                5 + int(index / total * 70),
+                {"round": event["round"], "event": event["name"], "completed": index, "total": total},
+            )
         event_result = {**event, "status": "unavailable", "weather": None, "winner": None, "pole": None}
         try:
             race = loader(year, event["name"], "Race", cache_dir)
@@ -337,14 +343,24 @@ def build_season_analysis(
             event_result.update(event_extra)
             event_result["status"] = "completed"
             _attach_race_models(normalized, event["round"], race)
+            del race
+            gc.collect()
         except Exception as exc:
             errors.append({"round": event["round"], "event": event["name"], "session": "Race", "message": str(exc)})
             event_rows.append(event_result)
             continue
         try:
+            if progress_callback:
+                progress_callback(
+                    "processing qualifying results",
+                    8 + int(index / total * 70),
+                    {"round": event["round"], "event": event["name"], "completed": index, "total": total},
+                )
             qualifying = loader(year, event["name"], "Qualifying", cache_dir)
             _attach_qualifying(normalized, event["round"], qualifying)
             event_result["pole"] = _pole_sitter(qualifying)
+            del qualifying
+            gc.collect()
         except Exception as exc:
             errors.append({"round": event["round"], "event": event["name"], "session": "Qualifying", "message": str(exc)})
         if include_sprints and any("sprint" in item["name"].lower() and "qual" not in item["name"].lower() and "shootout" not in item["name"].lower() for item in event.get("sessions", [])):
@@ -352,6 +368,8 @@ def build_season_analysis(
                 sprint = loader(year, event["name"], "Sprint", cache_dir)
                 _attach_sprint_points(normalized, event["round"], sprint)
                 event_result["sprint"] = True
+                del sprint
+                gc.collect()
             except Exception as exc:
                 errors.append({"round": event["round"], "event": event["name"], "session": "Sprint", "message": str(exc)})
         event_rows.append(event_result)
@@ -363,13 +381,16 @@ def build_season_analysis(
         payload["errors"] = errors
         return payload
 
+    if progress_callback:
+        progress_callback("calculating performance indexes", 80, None)
     payload = aggregate_records(year, normalized, event_rows, errors)
+    if progress_callback:
+        progress_callback("preparing charts", 90, None)
     payload["meta"]["isComplete"] = bool(schedule) and max(payload["meta"]["completedRounds"]) >= max(event["round"] for event in schedule)
     payload["filters"] = {"startRound": first, "endRound": last, "includeSprints": include_sprints}
     return payload
 
 
-@lru_cache(maxsize=24)
 def cached_season_analysis(
     year: int,
     cache_dir: str | None,
@@ -377,7 +398,7 @@ def cached_season_analysis(
     end_round: int | None,
     include_sprints: bool,
 ) -> dict[str, Any]:
-    """Memoize normalized season payloads within the web process."""
+    """Backward-compatible uncached builder; web requests use SeasonCacheManager."""
     return build_season_analysis(year, cache_dir, start_round, end_round, include_sprints)
 
 
@@ -408,6 +429,8 @@ def aggregate_records(year: int, records: list[dict[str, Any]], events: list[dic
         prediction["event"] = next_event["name"]
         prediction["similarCircuits"] = _similar_circuits(next_event, events)
     backtest = backtest_predictions(performance["teamCombined"])
+    comparisons = _driver_comparisons(records, drivers)
+    summary_statistics = _summary_statistics(records, drivers, teams)
     upgrade_impacts = []
     for upgrade in upgrades:
         team_points = performance["teamCombined"].get(upgrade.get("team"), [])
@@ -441,10 +464,207 @@ def aggregate_records(year: int, records: list[dict[str, Any]], events: list[dic
         "changePoints": changes,
         "prediction": prediction,
         "backtest": backtest,
+        "comparisons": comparisons,
+        "summaryStatistics": summary_statistics,
+        "charts": _prepared_charts(
+            completed_rounds, event_lookup, championship, performance, reliability, comparisons, records
+        ),
+        "tables": {
+            "raceResults": [
+                {
+                    key: row.get(key)
+                    for key in ("round", "event", "driver", "team", "grid", "finish", "points", "status")
+                }
+                for row in records
+            ],
+            "qualifyingResults": [
+                {
+                    key: row.get(key)
+                    for key in ("round", "event", "driver", "team", "qualifyingTime", "qualifyingDeficit")
+                }
+                for row in records
+            ],
+            "driverStandings": championship["drivers"],
+            "constructorStandings": championship["constructors"],
+            "teammateComparisons": comparisons["summary"],
+            "consistency": summary_statistics["driverConsistency"],
+        },
         "insights": insights,
         "methodology": METHODOLOGY,
         "errors": errors or [],
     }
+
+
+def _driver_comparisons(records: list[dict[str, Any]], drivers: list[str]) -> dict[str, Any]:
+    events: list[dict[str, Any]] = []
+    for round_number in sorted({row["round"] for row in records}):
+        by_team: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for row in records:
+            if row["round"] == round_number and row.get("team"):
+                by_team[row["team"]].append(row)
+        for team, rows in by_team.items():
+            for row in rows:
+                teammates = [other for other in rows if other["driver"] != row["driver"]]
+                if not teammates:
+                    continue
+                teammate = min(
+                    teammates,
+                    key=lambda other: (
+                        other.get("qualifyingDeficit")
+                        if other.get("qualifyingDeficit") is not None
+                        else float("inf")
+                    ),
+                )
+                events.append(
+                    {
+                        "round": round_number,
+                        "event": row["event"],
+                        "team": team,
+                        "driver": row["driver"],
+                        "teammate": teammate["driver"],
+                        "qualifyingGap": _difference(
+                            row.get("qualifyingDeficit"), teammate.get("qualifyingDeficit")
+                        ),
+                        "racePaceGap": _difference(
+                            row.get("racePaceDeficit"), teammate.get("racePaceDeficit")
+                        ),
+                        "finishGap": _difference(row.get("finish"), teammate.get("finish")),
+                    }
+                )
+    summary = []
+    for driver in drivers:
+        rows = [row for row in events if row["driver"] == driver]
+        qualifying = [row["qualifyingGap"] for row in rows if row["qualifyingGap"] is not None]
+        race = [row["racePaceGap"] for row in rows if row["racePaceGap"] is not None]
+        summary.append(
+            {
+                "driver": driver,
+                "team": rows[-1]["team"] if rows else None,
+                "events": len(rows),
+                "qualifyingMedianGap": float(median(qualifying)) if qualifying else None,
+                "racePaceMedianGap": float(median(race)) if race else None,
+                "qualifyingHeadToHeadWins": sum(value < 0 for value in qualifying),
+                "racePaceHeadToHeadWins": sum(value < 0 for value in race),
+                "confidence": confidence_for(min(len(qualifying), len(race))),
+            }
+        )
+    return {"events": events, "summary": summary}
+
+
+def _summary_statistics(
+    records: list[dict[str, Any]], drivers: list[str], teams: list[str]
+) -> dict[str, Any]:
+    consistency = []
+    for driver in drivers:
+        values = [
+            float(row["racePaceDeficit"])
+            for row in records
+            if row["driver"] == driver and row.get("racePaceDeficit") is not None
+        ]
+        centre = float(median(values)) if values else None
+        consistency.append(
+            {
+                "driver": driver,
+                "events": len(values),
+                "medianRacePaceDeficit": centre,
+                "mad": (
+                    float(median(abs(value - centre) for value in values))
+                    if values and centre is not None
+                    else None
+                ),
+                "confidence": confidence_for(len(values)),
+            }
+        )
+    average_finish = []
+    for kind, entities, key in (("driver", drivers, "driver"), ("team", teams, "team")):
+        for entity in entities:
+            finishes = [
+                float(row["finish"])
+                for row in records
+                if row[key] == entity and row.get("finish") is not None
+            ]
+            average_finish.append(
+                {
+                    "kind": kind,
+                    "entity": entity,
+                    "averageFinish": float(np.mean(finishes)) if finishes else None,
+                    "events": len(finishes),
+                }
+            )
+    return {
+        "driverConsistency": consistency,
+        "averageFinishingPositions": average_finish,
+        "positionChanges": [
+            {
+                "round": row["round"],
+                "driver": row["driver"],
+                "team": row["team"],
+                "grid": row.get("grid"),
+                "finish": row.get("finish"),
+                "change": (
+                    int(row["grid"]) - int(row["finish"])
+                    if row.get("grid") is not None and row.get("finish") is not None
+                    else None
+                ),
+                "kind": "observed grid-to-finish change",
+            }
+            for row in records
+        ],
+    }
+
+
+def _prepared_charts(
+    rounds: list[int],
+    event_lookup: dict[int, dict[str, Any]],
+    championship: dict[str, Any],
+    performance: dict[str, Any],
+    reliability: dict[str, Any],
+    comparisons: dict[str, Any],
+    records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    labels = [event_lookup.get(number, {}).get("name", f"Round {number}") for number in rounds]
+    return {
+        "rounds": rounds,
+        "roundLabels": labels,
+        "championshipProgression": {
+            "drivers": championship["drivers"],
+            "constructors": championship["constructors"],
+        },
+        "championshipPositions": {
+            "drivers": championship["driverPositions"],
+            "constructors": championship["constructorPositions"],
+        },
+        "qualifyingPaceTrends": {
+            "drivers": performance["driverQualifying"],
+            "teams": performance["teamQualifying"],
+        },
+        "racePaceTrends": {
+            "drivers": performance["driverRacePace"],
+            "teams": performance["teamRacePace"],
+            "adjustedDrivers": performance["driverAdjustedRacePace"],
+            "adjustedTeams": performance["teamAdjustedRacePace"],
+        },
+        "relativePerformanceMatrix": performance["teamCombined"],
+        "reliabilityTimeline": reliability["timeline"],
+        "teammateGaps": comparisons["events"],
+        "pointsPerEvent": [
+            {
+                "round": row["round"],
+                "event": row["event"],
+                "driver": row["driver"],
+                "team": row["team"],
+                "racePoints": row["points"],
+                "sprintPoints": row.get("sprintPoints", 0),
+            }
+            for row in records
+        ],
+    }
+
+
+def _difference(left: Any, right: Any) -> float | None:
+    if left is None or right is None:
+        return None
+    return float(left) - float(right)
 
 
 def _season_session_loader(year: int, event: str, session_name: str, cache_dir: str | None) -> Any:

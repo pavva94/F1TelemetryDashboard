@@ -4,7 +4,7 @@
     if (requested === "season" || requested === "race") return requested;
 
     const legacyPath = locationLike.pathname.replace(/\/+$/, "").split("/").pop();
-    return legacyPath === "season" ? "season" : "race";
+    return legacyPath === "race" ? "race" : "season";
   }
 
   function url(routeName, params = new URLSearchParams(), locationLike = window.location) {
