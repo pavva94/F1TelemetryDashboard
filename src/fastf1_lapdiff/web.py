@@ -27,7 +27,6 @@ DEFAULT_CACHE_DIR = os.environ.get("FASTF1_CACHE_DIR", str(Path.cwd() / ".fastf1
 DEFAULT_SEASON_CACHE_DIR = os.environ.get(
     "SEASON_ANALYSIS_CACHE_DIR", str(Path(DEFAULT_CACHE_DIR) / "seasons")
 )
-DEFAULT_SEASON_CACHE_SEED_DIR = os.environ.get("SEASON_ANALYSIS_SEED_DIR")
 
 
 def create_app() -> Any:
@@ -45,11 +44,7 @@ def create_app() -> Any:
         description="Formula 1 season, race, and lap analysis powered by FastF1 data.",
         version="0.1.0",
     )
-    season_cache = SeasonCacheManager(
-        DEFAULT_SEASON_CACHE_DIR,
-        DEFAULT_CACHE_DIR,
-        seed_root=DEFAULT_SEASON_CACHE_SEED_DIR,
-    )
+    season_cache = SeasonCacheManager(DEFAULT_SEASON_CACHE_DIR, DEFAULT_CACHE_DIR)
     app.state.season_cache = season_cache
     app.add_middleware(GZipMiddleware, minimum_size=1000)
 
