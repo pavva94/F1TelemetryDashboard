@@ -138,6 +138,11 @@ POST /api/season/2024/refresh
 to enable the protected refresh endpoint (send it as `X-Season-Refresh-Token`).
 The current season is refreshed only when the lightweight schedule check sees a
 new completed round; completed historical seasons do not expire on a short TTL.
+A prepared snapshot can also be bundled in
+`season-cache-seed`; Docker sets `SEASON_ANALYSIS_SEED_DIR` to this directory and
+copies each missing season into the writable runtime cache at startup. The seeded
+data is served immediately while any newer completed round is prepared in the
+background.
 
 Administrators can prepare one season or all configured seasons explicitly:
 

@@ -104,6 +104,83 @@ def test_calculation_version_mismatch_invalidates_generation() -> None:
         assert calls == 2
 
 
+def test_bundled_seed_hydrates_empty_runtime_cache() -> None:
+    with tempfile.TemporaryDirectory() as seed_directory, tempfile.TemporaryDirectory() as runtime_directory:
+        seed = SeasonCacheManager(
+            seed_directory,
+            builder=lambda year, cache, start, end, sprints, progress_callback=None: _payload(year, end),
+            schedule_loader=lambda year: _schedule(2),
+        )
+        seed.generate_now(2024)
+
+        runtime = SeasonCacheManager(
+            runtime_directory,
+            seed_root=seed_directory,
+            builder=lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("a valid seed must not be rebuilt")
+            ),
+            schedule_loader=lambda year: _schedule(2),
+        )
+
+        payload, status = runtime.request(2024)
+        assert payload is not None
+        assert payload["meta"]["availableRound"] == 2
+        assert status["status"] == "ready"
+
+
+def test_bundled_seed_does_not_replace_existing_runtime_generation() -> None:
+    with tempfile.TemporaryDirectory() as seed_directory, tempfile.TemporaryDirectory() as runtime_directory:
+        seed = SeasonCacheManager(
+            seed_directory,
+            builder=lambda year, cache, start, end, sprints, progress_callback=None: _payload(year, 1),
+            schedule_loader=lambda year: _schedule(1),
+        )
+        seed.generate_now(2024)
+        runtime = SeasonCacheManager(
+            runtime_directory,
+            builder=lambda year, cache, start, end, sprints, progress_callback=None: _payload(year, 2),
+            schedule_loader=lambda year: _schedule(2),
+        )
+        runtime.generate_now(2024)
+
+        restarted = SeasonCacheManager(
+            runtime_directory,
+            seed_root=seed_directory,
+            schedule_loader=lambda year: _schedule(2),
+        )
+
+        loaded = restarted.load(2024)
+        assert loaded is not None
+        assert loaded[0]["meta"]["availableRound"] == 2
+
+
+def test_current_seed_is_served_when_schedule_revalidation_is_offline() -> None:
+    year = datetime.now(timezone.utc).year
+    with tempfile.TemporaryDirectory() as seed_directory, tempfile.TemporaryDirectory() as runtime_directory:
+        seed = SeasonCacheManager(
+            seed_directory,
+            builder=lambda requested_year, cache, start, end, sprints, progress_callback=None: _payload(
+                requested_year, 1
+            ),
+            schedule_loader=lambda requested_year: _schedule(1),
+        )
+        seed.generate_now(year)
+
+        runtime = SeasonCacheManager(
+            runtime_directory,
+            seed_root=seed_directory,
+            schedule_loader=lambda requested_year: (_ for _ in ()).throw(
+                RuntimeError("schedule provider unavailable")
+            ),
+        )
+
+        payload, status = runtime.request(year)
+        assert payload is not None
+        assert payload["meta"]["availableRound"] == 1
+        assert status["status"] == "ready"
+        assert status["stale"] is False
+
+
 def test_stale_lock_is_recovered() -> None:
     with tempfile.TemporaryDirectory() as directory:
         season_dir = Path(directory) / "2024"

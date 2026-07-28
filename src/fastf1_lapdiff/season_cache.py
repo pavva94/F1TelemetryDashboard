@@ -39,17 +39,44 @@ class SeasonCacheManager:
         cache_root: str | Path,
         fastf1_cache_dir: str | Path | None = None,
         *,
+        seed_root: str | Path | None = None,
         builder: Callable[..., dict[str, Any]] = build_season_analysis,
         schedule_loader: Callable[[int], list[dict[str, Any]]] = list_events,
         stale_lock_seconds: int = DEFAULT_STALE_LOCK_SECONDS,
     ) -> None:
         self.root = Path(cache_root)
         self.fastf1_cache_dir = str(fastf1_cache_dir) if fastf1_cache_dir else None
+        self.seed_root = Path(seed_root) if seed_root else None
         self.builder = builder
         self.schedule_loader = schedule_loader
         self.stale_lock_seconds = stale_lock_seconds
         self.root.mkdir(parents=True, exist_ok=True)
+        self.hydrate_from_seed()
         self.recover_abandoned_state()
+
+    def hydrate_from_seed(self) -> None:
+        """Copy bundled prepared seasons into an empty runtime cache."""
+        if not self.seed_root or not self.seed_root.is_dir():
+            return
+        try:
+            seed_seasons = list(self.seed_root.iterdir())
+        except OSError:
+            return
+        for seed_season in seed_seasons:
+            if not seed_season.is_dir() or not seed_season.name.isdigit():
+                continue
+            target = self.root / seed_season.name
+            if target.exists():
+                continue
+            staging = self.root / f".{seed_season.name}.seed-{uuid.uuid4().hex}.tmp"
+            try:
+                shutil.copytree(seed_season, staging)
+                os.replace(staging, target)
+            except (FileExistsError, OSError):
+                # Another worker may have hydrated or started this season.
+                continue
+            finally:
+                shutil.rmtree(staging, ignore_errors=True)
 
     def recover_abandoned_state(self) -> None:
         """Remove abandoned staging directories and expired generation locks."""
@@ -326,7 +353,12 @@ class SeasonCacheManager:
     def _source_has_new_round(self, year: int, manifest: dict[str, Any]) -> bool:
         if year != _utc_now().year:
             return False
-        return self._latest_completed_round(year) > int(manifest.get("lastCompletedRound") or 0)
+        try:
+            return self._latest_completed_round(year) > int(manifest.get("lastCompletedRound") or 0)
+        except Exception:
+            # Revalidation must never prevent a valid prepared dataset from
+            # being served when the schedule provider is temporarily offline.
+            return False
 
     def _recent_failure(self, year: int, retry_after_seconds: int = 300) -> bool:
         failure = self._season_dir(year) / "last-failure.json"
